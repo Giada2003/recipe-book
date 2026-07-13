@@ -28,10 +28,8 @@ if (isset($_SESSION['user_id'])) {
   <!-- Header / Navigation -->
   <nav class="navbar navbar-default">
     <div class="container-fluid">
-      <div class="navbar-header">
-        <a class="navbar-brand" href="../index.php">Recipe Book</a>
-      </div>
       <ul class="nav navbar-nav navbar-right">
+        <li><a href="../index.php">Home</a></li>
         <li class="active"><a href="login.php">Login</a></li>
         <li><a href="register.php">Register</a></li>
       </ul>
@@ -41,8 +39,8 @@ if (isset($_SESSION['user_id'])) {
   <!-- Login Form Section -->
   <section id="auth-section" style="padding: 50px 0;">
     <div class="container">
-      <div class="row">
-        <div class="col-md-6 col-md-offset-3">
+      <div class="row justify-content-center">
+        <div class="col-md-6">
           <div class="panel panel-default">
             <div class="panel-heading">
               <h3 class="panel-title text-center">Login to Your Account</h3>
@@ -50,7 +48,7 @@ if (isset($_SESSION['user_id'])) {
             <div class="panel-body">
               <!-- Placeholder for error/success messages -->
               <div id="auth-message"></div>
-              
+
               <!-- The form uses data-action to tell auth.js what to do -->
               <form id="auth-form" data-action="login">
                 <div class="form-group">

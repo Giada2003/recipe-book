@@ -100,9 +100,6 @@ $recipes = $user_meals;
   <!-- Header / Navigation -->
   <nav class="navbar navbar-default">
     <div class="container-fluid">
-      <div class="navbar-header">
-        <a class="navbar-brand" href="../index.php">Recipe Book</a>
-      </div>
       <ul class="nav navbar-nav navbar-right">
         <li><a href="../index.php">Home</a></li>
         <li class="active"><a href="my_recipes.php">My Recipes (<?php echo htmlspecialchars($username); ?>)</a></li>

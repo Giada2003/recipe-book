@@ -66,7 +66,6 @@ function rootImagePath($path) {
   <link rel="stylesheet" type="text/css" href="css/reset.css" />
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
   <link rel="stylesheet" type="text/css" href="css/font-awesome.min.css"  />
-  <link rel="stylesheet" type="text/css" href="css/animate.min.css" />
   <link rel="stylesheet" type="text/css" href="css/styles.css" />
 
   <!-- Modernizr file
@@ -80,9 +79,6 @@ function rootImagePath($path) {
   <!-- Header / Navigation -->
   <nav class="navbar navbar-default" style="margin-bottom: 0;">
     <div class="container-fluid">
-      <div class="navbar-header">
-        <a class="navbar-brand" href="index.php">Recipe Book</a>
-      </div>
       <ul class="nav navbar-nav navbar-right">
         <li class="active"><a href="index.php">Home</a></li>
         <?php if (isset($_SESSION['user_id'])): ?>
@@ -104,9 +100,7 @@ function rootImagePath($path) {
   ================= -->
   <section id="logo">
     <div class="container text-center">
-      <img src="images/logo-white.svg" alt="logo" />
-      <br />
-      <h1>Recipe Book</h1>
+      <img src="images/logo.png" alt="logo" />
       <form action="index.php" method="GET" style="max-width: 400px; margin: 20px auto 0;">
         <div style="display: flex; background: #fff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <input type="text" name="search" placeholder="Search recipes..." value="<?php echo htmlspecialchars($search_term); ?>" style="flex-grow: 1; border: none; padding: 10px 15px; outline: none; font-size: 16px;">
@@ -117,71 +111,10 @@ function rootImagePath($path) {
     </div>
   </section>
 
-  <!-- Navigation Menu
-  ======================= -->
-  <section id="categories">
-    <div class="container">
-      <div class="row">
-        <!-- Home button -->
-        <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6">
-          <div class="category-item text-center">
-            <img src="images/icons/home.png" alt="home" width="48" height="48" />
-            <li class="active"><a href="index.php">Home</a></li>
-          </div>
-        </div>
-        <?php if (isset($_SESSION['user_id'])): ?>
-          <!-- My Recipes button -->
-          <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6">
-            <div class="category-item text-center">
-              <img src="images/icons/book.png" alt="my recipes" width="48" height="48" />
-              <li><a href="php/my_recipes.php">My Recipes (<?php echo htmlspecialchars($_SESSION['username']); ?>)</a></li>
-            </div>
-          </div>
-          <!-- Logout button -->
-          <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6">
-            <div class="category-item text-center">
-              <img src="images/icons/login.png" alt="login" width="48" height="48" />
-              <li><a href="php/logout.php">Logout</a></li>
-            </div>
-          </div>
-        <?php else: ?>
-          <!-- Login button -->
-          <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6">
-            <div class="category-item text-center">
-              <img src="images/icons/login.png" alt="login" width="48" height="48"/>
-              <li><a href="php/login.php">Login</a></li>
-            </div>
-          </div>
-          <!-- Register button -->
-          <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6">
-            <div class="category-item text-center">
-              <img src="images/icons/register.png" alt="register" width="48" height="48"/>
-              <li><a href="php/register.php">Register</a></li>
-            </div>
-          </div>
-        <?php endif; ?>
-      </div>
-      <div class="row">
-        <div class="col-12 text-center show-all">
-          <div class="category-item text-center">
-            <i class="fa fa-cutlery fa-2x" aria-hidden="true"></i>
-            <br />
-            Show All
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- Recipes Items
   ================== -->
   <section id="items">
     <div class="container">
-      <div class="row">
-        <div class="col-12">
-          <h2>Recipes</h2>
-        </div>
-      </div>
       <div class="row">
         <?php if (count($recipes) > 0): ?>
           <?php foreach ($recipes as $recipe): ?>

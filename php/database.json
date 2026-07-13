@@ -12,6 +12,19 @@
             "savedMeals": [
                 "53293"
             ]
+        },
+        {
+            "id": 3,
+            "username": "federico",
+            "password": "$2y$12$BgWTriYNNOoVG4q5YnSLEOggzyR4zmtjZVOSoHEt40Kf0PYwjbI\/O"
+        },
+        {
+            "id": 4,
+            "username": "Gabri",
+            "password": "$2y$12$IkoSssC.BKpBqYSLOGE1vOxJK9Egmu9FSBbfcpzVlPFutAnUYzpKy",
+            "savedMeals": [
+                "52787"
+            ]
         }
     ],
     "meals": [

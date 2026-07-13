@@ -4,11 +4,6 @@
 */
 
 @import url('https://fonts.googleapis.com/css?family=Montserrat');
-@import url('https://fonts.googleapis.com/css?family=Dancing+Script');
-@font-face {
-   font-family: 'Quirlycues';
-   src: url(../fonts/Quirlycues.ttf);
-}
 
 /*
 ** Base html
@@ -16,13 +11,16 @@
 */
 
 body {
-  background-color: #a44c9f;
+  background-color: #83d2e8;
   color: #666;
   font-size: 16px;
   font-family: 'Montserrat', sans-serif;
   font-weight: 400;
   line-height: 1.50;
   overflow-x: hidden;
+  background-image:
+  radial-gradient(rgba(15, 15, 15, 0.122)),
+  url("../images/background.png");
 }
 ol, ul {
   list-style: none;
@@ -44,6 +42,34 @@ table {
 .vertical-align {
   display: flex;
   align-items: center;
+}
+
+/*
+** Navigation
+** -----------------------------------------------------------------------------
+*/
+.navbar > .container-fluid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.navbar-default {
+  background-color: #28a745;
+  border: none;
+}
+.navbar-default .navbar-nav {
+  flex-direction: row;
+}
+.navbar-default .navbar-nav > li {
+  margin: 0 15px;
+}
+.navbar-default .navbar-nav > li > a {
+  color: #fff;
+}
+.navbar-default .navbar-nav > .active > a,
+.navbar-default .navbar-nav > li > a:hover {
+  background-color: #218838;
+  color: #fff;
 }
 
 /*
@@ -75,17 +101,15 @@ table {
   background-position: center;
   background-repeat: no-repeat;
   background-image:
-    radial-gradient(rgba(126, 0, 119, 0.15),
-    rgba(126, 0, 119, 0.75)),
-    url("../images/kitchen-banner.jpg");
+    radial-gradient(rgba(15, 15, 15, 0.35)),
+    url("../images/background.png");
 }
 #logo img {
-  height: 100px;
+  height: 200px;
   width: auto;
   margin-top: 24px;
 }
 #logo h1 {
-  font-family: 'Quirlycues';
   font-size: 72px;
   font-weight: normal;
   padding-top: 24px;
@@ -104,16 +128,15 @@ table {
 }
 #categories h2 {
   color: #333;
-  font-family: 'Dancing Script', cursive;
   font-size: 2em;
   margin-bottom: 12px;
 }
 .category-item {
   border: 2px;
-  border-color: #ff58df;
+  border-color: #7ed160c4;
   border-radius: 2.5px;
   border-style: solid !important;
-  background-color: #a44c9f;
+  background-color: #7ed160c4;
   color: #f9f9f9;
   font-weight: bold;
   margin-top: 6px;
@@ -138,7 +161,6 @@ table {
 }
 #items h2 {
   color: #333;
-  font-family: 'Dancing Script', cursive;
   font-size: 2em;
   margin-bottom: 12px;
 }
@@ -171,7 +193,6 @@ table {
 }
 #recipe h2 {
   color: #333;
-  font-family: 'Dancing Script', cursive;
   font-size: 2em;
   margin-bottom: 24px;
   margin-top: 12px;
@@ -211,7 +232,7 @@ table {
   box-shadow: 0 1px 0 rgba(0,0,0,.15);
 }
 .recipe-info i {
-  color: #a44c9f;
+  color: #7ed160c4;
 }
 .recipe-ingredients {
   background-color: #f9f9f9;
@@ -244,8 +265,8 @@ table {
   font-size: 13px;
   line-height: 37px;
   font-weight: 600;
-  background: #a44c9f;
-  color: #f9f9f9;
+  background: #7ed160c4;
+  color: #333;
   -webkit-box-shadow: 0 1px 0 rgba(0,0,0,.15);
   -moz-box-shadow: 0 1px 0 rgba(0,0,0,.15);
   box-shadow: 0 1px 0 rgba(0,0,0,.15);
@@ -284,7 +305,7 @@ table {
     left: -2.5em;
     top: 50%;
     margin-top: -1em;
-    background: #a44c9f;
+    background: #7ed160c4;
     height: 2em;
     width: 2em;
     line-height: 2em;
@@ -303,7 +324,7 @@ table {
 }
 .recipe-directions li:hover:after{
     left: -.5em;
-    border-left-color: #a44c9f;
+    border-left-color: #7ed160c4;
 }
 
 /*
@@ -312,7 +333,7 @@ table {
 */
 
 footer {
-  background-color: #a44c9f;
+  background-color: #7ed160c4;
   color: #f9f9f9;
   margin-bottom: 24px;
   margin-top: 24px;
