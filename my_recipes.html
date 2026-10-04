@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <!-- Tag fondamentale per i dispositivi mobili e Bootstrap -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Il mio Ricettario - PGRC</title>
+
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/font-awesome.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <nav class="navbar navbar-default navbar-custom">
+    <div class="container-fluid">
+
+      <!-- LOGO -->
+      <div class="navbar-header">
+        <a class="navbar-brand" href="index.html">
+          <!-- Aggiunta classe logo-img, rimosso style inline -->
+          <img src="images/logo.png" alt="Logo" class="logo-img">
+        </a>
+      </div>
+
+      <!-- MENU (Si popola con JS) -->
+      <ul class="nav navbar-nav" id="main-navbar"></ul>
+
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2 class="text-center" style="margin: 30px 0;">Il Mio Ricettario</h2>
+    <div class="row" id="my-recipes-container">
+        <div class="col-12 text-center">
+            <i class="fa fa-spinner fa-spin fa-3x"></i>
+            <p>Caricamento ricettario...</p>
+        </div>
+    </div>
+  </div>
+
+  <script src="js/pgrc-core.js"></script>
+  <script src="js/ui-controller.js"></script>
+</body>
+</html>

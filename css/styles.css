@@ -354,3 +354,289 @@ footer {
   color: #f9f9f9;
   font-weight: bold;
 }
+/* ==========================================
+   FIX SFONDO GENERALE (Verdure)
+   ========================================== */
+body {
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-attachment: fixed !important; /* Mantiene lo sfondo fermo mentre scorri in basso */
+  background-position: center top !important;
+}
+
+/* ==========================================
+   STILI NAVBAR E RICERCA MINIMAL
+   ========================================== */
+
+/* Stili Navbar Centrata */
+.navbar-custom {
+  background-color: #3baf36;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.navbar-custom .container-fluid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.navbar-custom .navbar-brand {
+  padding: 5px 15px;
+  height: auto;
+}
+
+#main-navbar {
+  display: flex;
+  flex-direction: row;
+  margin: 0;
+  padding: 0;
+}
+
+#main-navbar li a {
+  color: white !important;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+#main-navbar li a:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 5px;
+}
+
+/* Stile Area Ricerca (Senza immagine di sfondo) */
+#hero-banner {
+  background-image: none !important; /* Rimuove la foto della cucina */
+  background-color: transparent !important; /* Mantiene visibile lo sfondo delle verdure */
+  padding: 50px 0; /* Spazio ridotto per un look più compatto */
+}
+
+.banner-overlay {
+  display: none !important; /* Rimuove la patina semi-trasparente */
+}
+
+/* Barra di ricerca Minimal (Bianca, bordo verde, leggera ombra) */
+.search-container {
+  max-width: 600px;
+  margin: 0 auto;
+  border: 2px solid #3baf36;
+  border-radius: 50px;
+  overflow: hidden;
+  background-color: #ffffff; /* Sfondo bianco solido e pulito */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.search-container .search-flex {
+  display: flex;
+  background: transparent;
+}
+
+.search-container input {
+  background: transparent !important;
+  color: #333 !important;
+  padding: 15px 25px !important;
+  font-size: 18px !important;
+}
+
+.search-container input::placeholder {
+  color: #888;
+}
+
+.search-container button {
+  background-color: transparent !important;
+  color: #3baf36 !important;
+  padding: 15px 25px !important;
+  font-size: 18px !important;
+  transition: all 0.3s ease;
+}
+
+.search-container button:hover {
+  background-color: #3baf36 !important;
+  color: white !important;
+}
+
+/* Stile Titolo Esplora */
+.section-title {
+  font-weight: 800;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 32px;
+  margin-bottom: 40px;
+}
+
+.section-title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 4px;
+  background-color: #3baf36;
+  margin: 15px auto 0;
+  border-radius: 2px;
+}
+
+/* ==========================================
+   STILI DETTAGLIO RICETTA (Ingredienti, Step e Form)
+   ========================================== */
+.recipe-section-title {
+  font-weight: 300;
+  font-size: 28px;
+  color: #444;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+/* Box bianco semitrasparente condiviso per leggibilità */
+.content-box {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+/* Stili specifici per la lista ingredienti (senza padding extra sul contenitore) */
+.ingredients-box {
+  padding: 0;
+}
+
+.ingredient-item {
+  padding: 12px 20px;
+  border-bottom: 1px solid #eaeaea;
+  font-size: 16px;
+  color: #333;
+}
+
+.ingredient-item:last-child {
+  border-bottom: none;
+}
+
+/* Stili per la preparazione */
+.prep-step {
+  margin-bottom: 25px;
+}
+
+.step-label {
+  color: #777;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.prep-step p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #444;
+}
+
+/* Fix per forzare l'altezza e i bordi dei pannelli side-by-side */
+.panel-custom {
+  border: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  height: 100%; /* Forza i due pannelli ad avere la stessa altezza */
+}
+
+/* Stili per la preparazione con linee divisorie */
+.prep-step {
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eaeaea; /* Aggiunge la linea tra gli step */
+}
+
+/* Rimuove la linea dall'ultimo step per un look più pulito */
+.prep-step:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.step-label {
+  color: #777;
+  font-size: 14px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.prep-step p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #444;
+}
+
+/* Stili per i form di note e recensioni */
+.interaction-panel-body {
+    padding: 20px !important; /* Forza il margine interno (il bianco ai lati) */
+}
+
+.interaction-btn {
+    font-weight: bold !important;
+    border: none !important;
+    padding: 12px !important;
+    font-size: 16px !important;
+}
+
+/* ==========================================
+   STILI INTESTATZIONE RICETTA SINGOLA
+   ========================================== */
+
+/* Immagine principale della ricetta */
+.recipe-main-img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+/* Bottone per aggiungere al ricettario */
+.recipe-book-btn {
+    margin-top: 20px;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Titolo grande, spesso e leggibile su qualsiasi sfondo */
+.recipe-main-title {
+    margin-top: 0;
+    font-weight: 800;
+    font-size: 42px;
+    color: #222;
+    text-shadow: 2px 2px 10px rgba(255,255,255,0.9), -1px -1px 4px rgba(255,255,255,0.9);
+    letter-spacing: -1px;
+}
+
+/* Contenitore e stile per le etichette (Categoria e Nazione) */
+.recipe-badges-container {
+    margin-top: 15px;
+    margin-bottom: 30px;
+}
+
+.recipe-badge {
+    display: inline-block;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    margin-right: 10px;
+}
+
+.recipe-badge i {
+    margin-right: 5px;
+}
+
+/* Colori specifici per i badge */
+.badge-category {
+    background-color: #3baf36;
+}
+
+.badge-area {
+    background-color: #ff9800;
+}
+
+/* Stile Logo Navbar */
+.logo-img {
+  height: 40px;
+  width: auto;
+}

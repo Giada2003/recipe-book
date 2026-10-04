@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dettaglio Ricetta - PGRC</title>
+
+    <link rel="stylesheet" type="text/css" href="css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
+    <link rel="stylesheet" type="text/css" href="css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="css/styles.css" />
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-default navbar-custom">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="index.html">
+                <img src="images/logo.png" alt="Logo" style="height: 40px; width: auto;">
+            </a>
+        </div>
+        <ul class="nav navbar-nav" id="main-navbar"></ul>
+    </div>
+</nav>
+
+<div class="container" style="margin-top: 40px; margin-bottom: 60px;">
+
+    <!-- Contenitore della Ricetta -->
+    <div class="row" id="recipe-details-container">
+        <div class="col-12 text-center" style="padding: 50px;">
+            <i class="fa fa-spinner fa-spin fa-3x" style="color: #3baf36;"></i>
+            <p style="margin-top: 15px;">Preparazione ingredienti in corso...</p>
+        </div>
+    </div>
+
+<!-- Area Note e Recensioni (Nascosta se non si è loggati) -->
+    <div class="row" id="interactions-area" style="display: none; margin-top: 50px;">
+
+        <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+
+            <!-- Colonna Note Privata -->
+            <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column;">
+                <div class="panel panel-custom" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(255,255,255,0.95);">
+                    <div class="panel-heading" style="background-color: #3baf36; color: white; border-radius: 4px 4px 0 0; padding: 15px; margin: 0;">
+                        <h3 class="panel-title" style="font-size: 22px; font-weight: 300;">
+                            <i class="fa fa-lock"></i> La tua Nota Privata
+                        </h3>
+                    </div>
+                    <!-- Aggiunta classe interaction-panel-body per il padding -->
+                    <div class="panel-body interaction-panel-body" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <textarea id="privateNoteInput" class="form-control" rows="4" placeholder="Scrivi qui i tuoi appunti segreti sulla ricetta..." style="resize: vertical; border: 1px solid #ddd; margin-bottom: 15px; width: 100%;"></textarea>
+                        </div>
+                        <div>
+                            <!-- Bottone trasformato in block (larghezza intera) come richiesto -->
+                            <button id="saveNoteBtn" class="btn btn-block btn-success interaction-btn" style="background-color: #3baf36;">Salva Nota</button>
+                            <div class="text-center" style="margin-top: 5px;">
+                                <span id="noteStatus" class="text-success" style="display:none;"><i class="fa fa-check"></i> Salvata!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colonna Recensioni -->
+            <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column;">
+                <div class="panel panel-custom" style="background: rgba(255,255,255,0.95); flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="panel-heading" style="background-color: transparent; border-bottom: none; padding: 15px; margin: 0;">
+                        <h3 class="panel-title" style="font-size: 22px; font-weight: 300; color: #777;">
+                            <i class="fa fa-star" style="color: #777;"></i> Le tue Recensioni
+                        </h3>
+                    </div>
+                    <!-- Aggiunta classe interaction-panel-body per il padding -->
+                    <div class="panel-body interaction-panel-body" style="padding-top: 0 !important; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div id="reviews-list" style="max-height: 100px; overflow-y: auto; margin-bottom: 15px; color: #777;"></div>
+
+                        <div>
+                            <hr style="margin: 10px 0; border-color: #eee;">
+                            <form id="addReviewForm">
+                                <!-- Modificato per mantenere gli elementi dentro i bordi -->
+                                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                    <div style="flex: 1;">
+                                        <label style="color: #777; font-weight: normal; font-size: 12px; display: block;">Difficoltà (1-5)</label>
+                                        <select id="diffSelect" class="form-control" required style="border: 1px solid #ddd; width: 100%;">
+                                            <option value="1">1 - Facilissima</option>
+                                            <option value="2">2 - Facile</option>
+                                            <option value="3">3 - Media</option>
+                                            <option value="4">4 - Difficile</option>
+                                            <option value="5">5 - Masterchef</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="color: #777; font-weight: normal; font-size: 12px; display: block;">Gusto (1-5)</label>
+                                        <select id="tasteSelect" class="form-control" required style="border: 1px solid #ddd; width: 100%;">
+                                            <option value="1">1 - Pessimo</option>
+                                            <option value="2">2 - Mediocre</option>
+                                            <option value="3">3 - Buono</option>
+                                            <option value="4">4 - Ottimo</option>
+                                            <option value="5">5 - Delizioso</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-block interaction-btn" style="background-color: #ffc107; color: #333;">Aggiungi Recensione</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/pgrc-core.js"></script>
+<script src="js/ui-controller.js"></script>
+
+</body>
+</html>
