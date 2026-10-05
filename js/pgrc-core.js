@@ -1,5 +1,5 @@
 /**
- * PGRC - Piattaforma per la Gestione di Ricette di Cucina
+ * Piattaforma per la Gestione di Ricette di Cucina
  * Core System - Gestione Web Storage, API e Autenticazione
  */
 

@@ -1,6 +1,6 @@
 /**
- * PGRC - Piattaforma per la Gestione di Ricette di Cucina
- * UI Controller Definitivo Completo
+ * Piattaforma per la Gestione di Ricette di Cucina
+ * UI Controller - Gestione DOM, Eventi e Rendering
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
