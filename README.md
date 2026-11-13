@@ -224,7 +224,7 @@ pgrc_db
 
 This allows recipe data, user accounts, saved recipes, notes, and reviews to persist between browser sessions.
 
-Passwords are stored as PBKDF2-SHA256 hashes with a unique random salt and 600,000 iterations. Existing plaintext passwords are hashed at startup. Since this is a client-side application, this does not replace server-side authentication or protect data from someone who can modify the browser storage.
+Passwords are stored as PBKDF2-SHA256 hashes with a unique random salt and 600,000 iterations. Since this is a client-side application, this does not replace server-side authentication or protect data from someone who can modify the browser storage.
 
 ---
 

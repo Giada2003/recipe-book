@@ -48,11 +48,6 @@ class PGRCSystem {
             throw this._createError('STORAGE', "Il database locale è incompleto o ha una struttura non valida.");
         }
 
-        // Questi campi sono stati aggiunti dopo le prime versioni del database:
-        // valori assenti sono inizializzati, ma valori presenti con tipo errato
-        // non vengono corretti silenziosamente.
-        db.reviews = db.reviews === undefined ? {} : db.reviews;
-        db.loadedRecipeLetters = db.loadedRecipeLetters === undefined ? [] : db.loadedRecipeLetters;
         if (!this._isRecord(db.reviews) || !Array.isArray(db.loadedRecipeLetters) ||
             db.loadedRecipeLetters.some(letter => typeof letter !== 'string')) {
             throw this._createError('STORAGE', "Il database locale contiene dati incompleti o non validi.");
@@ -68,21 +63,20 @@ class PGRCSystem {
         // Ogni account deve avere credenziali e il proprio spazio interazioni.
         for (const [username, user] of Object.entries(db.users)) {
             if (!this._isRecord(user) || typeof user.email !== 'string' ||
-                !(typeof user.password === 'string' || this._isRecord(user.password)) ||
+                !this._isRecord(user.password) ||
                 !this._isRecord(db.interactions[username])) {
                 throw this._createError('STORAGE', `I dati locali dell'utente ${username} sono incompleti.`);
             }
         }
         // Le interazioni usano un record per utente e una voce per ricetta.
-        // I campi opzionali delle versioni precedenti sono accettati se validi.
+        // La nota può mancare dopo la sua eliminazione esplicita.
         for (const [username, interactions] of Object.entries(db.interactions)) {
             if (!this._isRecord(interactions)) {
                 throw this._createError('STORAGE', "Le interazioni salvate nel browser hanno una struttura non valida.");
             }
             for (const interaction of Object.values(interactions)) {
                 if (!this._isRecord(interaction) || typeof interaction.saved !== 'boolean' ||
-                    (interaction.note !== undefined && typeof interaction.note !== 'string') ||
-                    (interaction.reviews !== undefined && !Array.isArray(interaction.reviews))) {
+                    (interaction.note !== undefined && typeof interaction.note !== 'string')) {
                     throw this._createError('STORAGE', `Le interazioni locali dell'utente ${username} sono incomplete.`);
                 }
             }
@@ -178,7 +172,7 @@ class PGRCSystem {
             recipes: {},        // Oggetto con ID ricetta come chiave per evitare duplicati
             users: {},          // Oggetto con username come chiave
             currentUser: null,  // Username dell'utente attualmente loggato
-            interactions: {},   // Interazioni: interactions[username][mealId] = { saved, note, reviews }
+            interactions: {},   // Interazioni: interactions[username][mealId] = { saved, note }
             reviews: {},        // Recensioni pubbliche: reviews[mealId] = [...]
             loadedRecipeLetters: []
         };
@@ -234,11 +228,10 @@ class PGRCSystem {
     }
 
     /**
-     * Supporta le vecchie password in chiaro durante la migrazione e verifica
-     * gli hash confrontandoli senza interrompere il confronto al primo byte diverso.
+     * Verifica password PBKDF2-SHA256 confrontando gli hash senza interrompere
+     * il confronto al primo byte diverso.
      */
     async _verifyPassword(password, storedPassword) {
-        if (typeof storedPassword === 'string') return storedPassword === password;
         if (!storedPassword || storedPassword.algorithm !== 'PBKDF2-SHA256' ||
             !Number.isInteger(storedPassword.iterations) ||
             storedPassword.iterations < 100000 || storedPassword.iterations > 1000000) {
@@ -259,21 +252,6 @@ class PGRCSystem {
         return difference === 0;
     }
 
-    /**
-     * Converte gli account creati dalle versioni precedenti all'hashing.
-     * Il database viene scritto una sola volta solo se almeno una password cambia.
-     */
-    async _migratePlaintextPasswords(db) {
-        let changed = false;
-        for (const user of Object.values(db.users || {})) {
-            if (user && typeof user.password === 'string') {
-                user.password = await this._hashPassword(user.password);
-                changed = true;
-            }
-        }
-        if (changed) this._saveDB(db);
-    }
-
     // ==========================================
     // 2. STARTUP E API THEMEALDB
     // ==========================================
@@ -285,8 +263,6 @@ class PGRCSystem {
      */
     async startup() {
         const db = this._getDB();
-        db.recipes = db.recipes || {};
-        await this._migratePlaintextPasswords(db);
 
         // Le lettere già completate non vengono scaricate di nuovo al successivo avvio.
         const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(97 + index));
@@ -367,8 +343,8 @@ class PGRCSystem {
     }
 
     /**
-     * Verifica le credenziali, migra al volo un'eventuale password legacy e
-     * registra l'utente come sessione corrente solo dopo una verifica riuscita.
+     * Verifica le credenziali e registra l'utente come sessione corrente
+     * solo dopo una verifica PBKDF2 riuscita.
      */
     async login(username, password) {
         const db = this._getDB();
@@ -378,9 +354,6 @@ class PGRCSystem {
             throw new Error("Credenziali non valide.");
         }
 
-        if (typeof user.password === 'string') {
-            user.password = await this._hashPassword(password);
-        }
         db.currentUser = username;
         this._saveDB(db);
         return true;
@@ -426,10 +399,6 @@ class PGRCSystem {
         }
         const hashedPassword = password ? await this._hashPassword(password) : null;
 
-        // Prima della rinomina assicura che anche le recensioni storiche
-        // siano nell'archivio pubblico che verrà aggiornato sotto.
-        this._migrateLegacyReviews(db);
-
         const user = db.users[currentUsername];
         user.email = email.trim();
         user.preferences = preferences
@@ -463,7 +432,6 @@ class PGRCSystem {
         const db = this._getDB();
         const user = db.currentUser;
         if (user) {
-            this._migrateLegacyReviews(db);
             Object.entries(db.reviews).forEach(([mealId, reviews]) => {
                 const remainingReviews = reviews.filter(review => review.username !== user);
                 if (remainingReviews.length > 0) {
@@ -645,7 +613,7 @@ class PGRCSystem {
         if (!user) throw new Error("Utente non loggato.");
 
         if (!db.interactions[user][mealId]) {
-            db.interactions[user][mealId] = { saved: false, note: "", reviews: [] };
+            db.interactions[user][mealId] = { saved: false, note: "" };
         }
         return user;
     }
@@ -687,36 +655,6 @@ class PGRCSystem {
     }
 
     /**
-     * Importa una sola volta le recensioni presenti nelle vecchie interazioni
-     * private nell'archivio pubblico indicizzato per ricetta.
-     * Gli ID legacy deterministici rendono l'operazione idempotente.
-     */
-    _migrateLegacyReviews(db) {
-        if (db.legacyReviewsMigrated) return;
-
-        db.reviews = db.reviews || {};
-
-        Object.entries(db.interactions || {}).forEach(([username, meals]) => {
-            Object.entries(meals || {}).forEach(([mealId, interaction]) => {
-                if (!interaction || !Array.isArray(interaction.reviews)) return;
-
-                db.reviews[mealId] = db.reviews[mealId] || [];
-                interaction.reviews.forEach((review, index) => {
-                    // Evita duplicati se la migrazione viene ripetuta prima
-                    // che il flag di completamento sia persistito.
-                    const id = `legacy-${username}-${mealId}-${index}`;
-                    if (!db.reviews[mealId].some(existing => existing.id === id)) {
-                        db.reviews[mealId].push({ ...review, id, username });
-                    }
-                });
-            });
-        });
-
-        db.legacyReviewsMigrated = true;
-        this._saveDB(db);
-    }
-
-    /**
      * Aggiunge una recensione pubblica dopo aver verificato sessione,
      * formato/data di preparazione e voti ammessi.
      */
@@ -724,8 +662,6 @@ class PGRCSystem {
         const db = this._getDB();
         const user = db.currentUser;
         if (!user || !db.users[user]) throw new Error("Utente non loggato.");
-
-        this._migrateLegacyReviews(db);
 
         // Il controllo di round-trip rifiuta date impossibili che possono
         // superare una semplice verifica del formato YYYY-MM-DD.
@@ -764,13 +700,9 @@ class PGRCSystem {
         return newReview;
     }
 
-    /**
-     * Restituisce le recensioni pubbliche della ricetta, migrando prima
-     * eventuali contenuti legacy ancora presenti nelle interazioni private.
-     */
+    /** Restituisce le recensioni pubbliche associate alla ricetta. */
     getReviews(mealId) {
         const db = this._getDB();
-        this._migrateLegacyReviews(db);
         return db.reviews[mealId] || [];
     }
 
@@ -783,7 +715,6 @@ class PGRCSystem {
         const user = db.currentUser;
         if (!user || !db.users[user]) throw new Error("Utente non loggato.");
 
-        this._migrateLegacyReviews(db);
         const reviews = db.reviews[mealId] || [];
         const reviewIndex = reviews.findIndex(review => review.id === reviewId && review.username === user);
         if (reviewIndex === -1) return false;
@@ -801,7 +732,7 @@ class PGRCSystem {
         const db = this._getDB();
         const user = db.currentUser;
         if (!user || !db.interactions[user] || !db.interactions[user][mealId]) {
-            return { saved: false, note: "", reviews: [] };
+            return { saved: false, note: "" };
         }
         return db.interactions[user][mealId];
     }
