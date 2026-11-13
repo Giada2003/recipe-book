@@ -329,7 +329,9 @@ function createRecipeCard(meal, isPersonalRecipe) {
     title.textContent = meal.strMeal;
     const category = document.createElement('p');
     category.className = 'text-muted';
-    category.textContent = typeof meal.strCategory === 'string' ? meal.strCategory : '';
+    category.textContent = typeof meal.strCategory === 'string' && meal.strCategory.trim()
+        ? meal.strCategory
+        : 'Categoria non disponibile';
 
     card.append(link, title, category);
     if (isPersonalRecipe) {
@@ -714,7 +716,7 @@ function setupEventListeners() {
             searchInput.placeholder = isLetterSearch
                 ? 'Inserisci una lettera (A-Z)...'
                 : searchType.value === 'ingredient'
-                    ? 'Es. pollo, pomodoro...'
+                    ? 'Es. chicken, tomato...'
                     : searchType.value === 'description'
                         ? 'Cerca nelle descrizioni caricate...'
                         : 'Cerca una ricetta...';

@@ -315,8 +315,16 @@ class PGRCSystem {
      */
     async register(username, email, password, preferences = []) {
         const db = this._getDB();
+        const normalizedUsername = username.trim();
+        const normalizedEmail = email.trim();
+        const normalizedPreferences = preferences
+            .map(preference => preference.trim())
+            .filter(Boolean);
 
-        if (db.users[username]) {
+        if (!normalizedUsername || !normalizedEmail) {
+            throw new Error("Username ed email sono obbligatori.");
+        }
+        if (db.users[normalizedUsername]) {
             throw new Error("Username già esistente.");
         }
         if (typeof password !== 'string' || password.length === 0) {
@@ -325,18 +333,18 @@ class PGRCSystem {
 
         const hashedPassword = await this._hashPassword(password);
         const updatedDb = this._getDB();
-        if (updatedDb.users[username]) {
+        if (updatedDb.users[normalizedUsername]) {
             throw new Error("Username già esistente.");
         }
 
-        updatedDb.users[username] = {
-            email: email,
+        updatedDb.users[normalizedUsername] = {
+            email: normalizedEmail,
             password: hashedPassword,
-            preferences: preferences
+            preferences: normalizedPreferences
         };
 
         // Mantiene la corrispondenza richiesta da _getDB tra account e interazioni.
-        updatedDb.interactions[username] = {};
+        updatedDb.interactions[normalizedUsername] = {};
 
         this._saveDB(updatedDb);
         return true;
@@ -501,15 +509,17 @@ class PGRCSystem {
         if (meals.length === 0) return [];
 
         const db = this._getDB();
-        // Le ricerche per ingrediente/lettera possono restituire riepiloghi:
-        // non sovrascrivere una ricetta completa già in cache con quei riepiloghi.
-        meals.forEach(meal => {
-            if (!db.recipes[meal.idMeal] || !this._isCompleteRecipe(db.recipes[meal.idMeal])) {
-                db.recipes[meal.idMeal] = meal;
-            }
+        // filter.php può restituire solo riepiloghi. Conserva i dettagli completi
+        // già in cache per poter mostrare anche la categoria nella griglia.
+        const results = meals.map(meal => {
+            const cachedMeal = db.recipes[meal.idMeal];
+            if (this._isCompleteRecipe(cachedMeal)) return cachedMeal;
+
+            db.recipes[meal.idMeal] = meal;
+            return meal;
         });
         this._saveDB(db);
-        return meals;
+        return results;
     }
 
     /**
