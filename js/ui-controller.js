@@ -4,11 +4,14 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Inizializza i dati dal Web Storage / API
+    // Il core deve validare lo storage e preparare il catalogo prima che la UI
+    // legga i dati dell'utente o mostri le ricette disponibili.
     let startupError = null;
     try {
         await PGRC.startup();
     } catch (error) {
+        // Dati locali non leggibili compromettono tutte le pagine; un errore
+        // API, invece, consente ancora di usare una cache già presente.
         if (error.code === 'STORAGE') {
             renderGlobalError(error);
             return;
@@ -17,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Errore di inizializzazione:", error);
     }
 
-    // 2. Aggiorna sempre la Navbar
+    // La navigazione viene costruita in base alla sessione locale attuale.
     try {
         updateNavbarUI();
     } catch (error) {
@@ -25,7 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // 3. SMISTATORE PAGINE (Router)
+    // Le pagine condividono questo controller: la presenza del contenitore
+    // identifica quale inizializzatore eseguire senza dipendere dal pathname.
     if (document.getElementById('recipe-container')) {
         // Siamo in index.html (Homepage pubblica)
         handleSearchAndRendering(startupError);
@@ -43,10 +47,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         initRecipePage();
     }
 
-    // 4. Imposta gli eventi dei form e bottoni
+    // Registra i listener dopo aver inizializzato la pagina specifica.
     setupEventListeners();
 });
 
+/**
+ * Traduce i codici d'errore del core in messaggi adatti all'interfaccia.
+ * La distinzione tra rete, API, ricetta assente e storage evita di presentare
+ * un guasto come se fosse una ricerca valida senza risultati.
+ */
 function getErrorMessage(error) {
     if (error.code === 'CONNECTION') return "Errore di connessione. Controlla la rete e riprova.";
     if (error.code === 'API_RESPONSE') return "Errore nella risposta API. Riprova più tardi.";
@@ -56,6 +65,11 @@ function getErrorMessage(error) {
     return error.message || "Si è verificato un errore imprevisto.";
 }
 
+/**
+ * Sostituisce il contenuto del contenitore con un messaggio testuale.
+ * Il testo passa da textContent, così anche dati provenienti da API o storage
+ * non vengono interpretati come markup.
+ */
 function renderMessage(container, message, className = 'col-12 text-center') {
     container.replaceChildren();
     const wrapper = document.createElement('div');
@@ -66,6 +80,11 @@ function renderMessage(container, message, className = 'col-12 text-center') {
     container.appendChild(wrapper);
 }
 
+/**
+ * Mostra un avviso per le pagine protette e offre un collegamento all'accesso.
+ * Il contenitore viene ripulito per non lasciare moduli o contenuti protetti
+ * visibili quando manca una sessione autenticata.
+ */
 function renderLoginMessage(container, message) {
     container.replaceChildren();
     const wrapper = document.createElement('div');
@@ -81,6 +100,11 @@ function renderLoginMessage(container, message) {
     container.appendChild(wrapper);
 }
 
+/**
+ * Visualizza un errore che impedisce l'avvio completo della pagina.
+ * Viene inserito all'inizio del body così il problema rimane visibile anche
+ * quando non è possibile inizializzare il normale contenuto applicativo.
+ */
 function renderGlobalError(error) {
     const container = document.createElement('main');
     container.className = 'container app-error-message';
@@ -100,8 +124,11 @@ function updateNavbarUI() {
     const navUl = document.getElementById('main-navbar');
 
     if (!navUl) return;
+    // Ricostruire la lista evita link duplicati e fa riflettere logout o
+    // aggiornamenti dell'account effettuati durante la sessione.
     navUl.replaceChildren();
 
+    // I link sono creati come nodi DOM e il testo non viene interpretato come HTML.
     const addLink = (text, href, id) => {
         const item = document.createElement('li');
         const link = document.createElement('a');
@@ -119,6 +146,7 @@ function updateNavbarUI() {
         addLink('Modifica utente', 'edit_user.html');
         addLink('Logout', '#', 'js-logout').addEventListener('click', (e) => {
             e.preventDefault();
+            // Il core elimina la sessione prima di ricaricare la home pubblica.
             PGRC.logout();
             window.location.href = 'index.html';
         });
@@ -129,6 +157,10 @@ function updateNavbarUI() {
     }
 }
 
+/**
+ * Decide quale flusso di visualizzazione usare sulla home:
+ * una ricerca richiesta dall'URL oppure alcune ricette casuali dalla cache.
+ */
 async function handleSearchAndRendering(startupError = null) {
     const urlParams = new URLSearchParams(window.location.search);
     const searchQuery = urlParams.get('search');
@@ -138,12 +170,14 @@ async function handleSearchAndRendering(startupError = null) {
     const loadMoreContainer = document.getElementById('load-more-container');
 
     if (searchQuery && searchQuery.trim() !== '') {
+        // "Carica altre" riguarda il catalogo casuale, non i risultati filtrati.
         if (loadMoreContainer) loadMoreContainer.classList.add('is-hidden');
         const typeSelect = document.getElementById('searchType');
         if (typeSelect) {
             typeSelect.value = searchType;
         }
         if (searchType === 'letter' && !/^[a-z]$/i.test(searchQuery.trim())) {
+            // Le ricerche per iniziale accettano un solo carattere alfabetico.
             alert("Inserisci una sola lettera da A a Z.");
             renderRecipeGrid([], 'recipe-container');
             return;
@@ -159,11 +193,15 @@ async function handleSearchAndRendering(startupError = null) {
         try {
             let recipesArray = PGRC.getCachedRecipes();
             if (recipesArray.length > 0) {
+            // La home mostra un campione casuale; il resto resta disponibile
+            // tramite il pulsante di caricamento aggiuntivo.
             recipesArray = recipesArray.sort(() => 0.5 - Math.random()).slice(0, 6);
             renderRecipeGrid(recipesArray, 'recipe-container');
             } else if (startupError) {
+                // Mostra l'errore solo se l'avvio non ha lasciato ricette in cache.
                 renderMessage(document.getElementById('recipe-container'), getErrorMessage(startupError), 'col-12 text-center alert alert-danger');
             } else {
+                // L'assenza di risultati è distinta da un errore API o di rete.
                 renderMessage(document.getElementById('recipe-container'), "Nessuna ricetta trovata.");
             }
         } catch (error) {
@@ -176,6 +214,11 @@ async function handleSearchAndRendering(startupError = null) {
 // 2. PAGINA RICETTARIO (PROTETTA)
 // ==========================================
 
+/**
+ * Carica la raccolta personale dell'utente corrente.
+ * Un archivio vuoto è uno stato normale; un errore nel recupero dei dati locali
+ * viene invece mostrato come errore esplicito.
+ */
 function loadMyRecipesPage() {
     const user = PGRC.getCurrentUser();
     const container = document.getElementById('my-recipes-container');
@@ -201,6 +244,11 @@ function loadMyRecipesPage() {
     renderRecipeGrid(savedRecipes, 'my-recipes-container');
 }
 
+/**
+ * Precompila il modulo di modifica account con i dati non segreti dell'utente.
+ * La password non viene precompilata nel campo: lasciandolo vuoto, l'utente
+ * mantiene quella attuale.
+ */
 function loadAccountPage() {
     const user = PGRC.getCurrentUser();
     const container = document.getElementById('account-management-container');
@@ -220,6 +268,10 @@ function loadAccountPage() {
 // 3. GENERATORE GRAFICO DI CARD
 // ==========================================
 
+/**
+ * Sostituisce le card correnti con quelle ricevute e gestisce l'elenco vuoto.
+ * Il flag delle ricette personali abilita nelle card il comando di rimozione.
+ */
 function renderRecipeGrid(recipes, targetContainerId) {
     const container = document.getElementById(targetContainerId);
     if (!container) return;
@@ -235,6 +287,10 @@ function renderRecipeGrid(recipes, targetContainerId) {
     });
 }
 
+/**
+ * Aggiunge card a una griglia già renderizzata senza rimuovere quelle esistenti.
+ * Viene usato dal caricamento incrementale della home.
+ */
 function appendRecipesToGrid(recipes, targetContainerId) {
     const container = document.getElementById(targetContainerId);
     if (!container) return;
@@ -242,6 +298,10 @@ function appendRecipesToGrid(recipes, targetContainerId) {
     recipes.forEach(meal => container.appendChild(createRecipeCard(meal, false)));
 }
 
+/**
+ * Crea una card usando solo nodi DOM; titoli e categorie API sono testo,
+ * mentre l'immagine viene accettata solo se il suo URL usa HTTPS.
+ */
 function createRecipeCard(meal, isPersonalRecipe) {
     const column = document.createElement('div');
     column.className = 'col-lg-4 col-md-6 col-sm-12';
@@ -289,6 +349,10 @@ function createRecipeCard(meal, isPersonalRecipe) {
 // 4. PAGINA SINGOLA RICETTA (recipe.html)
 // ==========================================
 
+/**
+ * Legge l'identificativo dalla query string, carica la ricetta tramite il core
+ * e attiva le aree di interazione solo dopo aver mostrato un dettaglio valido.
+ */
 async function initRecipePage() {
     const urlParams = new URLSearchParams(window.location.search);
     const mealId = urlParams.get('id');
@@ -320,6 +384,11 @@ async function initRecipePage() {
     }
 }
 
+/**
+ * Costruisce la vista del dettaglio senza concatenare valori API in HTML.
+ * Immagine, ingredienti, metadati e istruzioni vengono aggiunti come nodi
+ * separati; istruzioni e altri testi restano quindi contenuto letterale.
+ */
 function renderSingleRecipeHTML(meal) {
     const container = document.getElementById('recipe-details-container');
     container.replaceChildren();
@@ -332,6 +401,7 @@ function renderSingleRecipeHTML(meal) {
     if (typeof meal.strMealThumb === 'string') {
         try {
             const imageUrl = new URL(meal.strMealThumb);
+            // Non caricare immagini tramite protocolli diversi da HTTPS.
             if (imageUrl.protocol === 'https:') image.src = imageUrl.href;
             else image.classList.add('is-hidden');
         } catch (error) {
@@ -387,6 +457,8 @@ function renderSingleRecipeHTML(meal) {
     detailsColumn.appendChild(createRecipeSectionTitle('Preparazione'));
     const instructionsBox = document.createElement('div');
     instructionsBox.className = 'content-box';
+    // L'API a volte antepone numerazioni o "Step n" alle righe: rimuovere
+    // soltanto questo prefisso mantiene il testo utile e numerazione uniforme.
     const finalSteps = meal.strInstructions.split(/\r?\n/)
         .map(step => step.trim().replace(/^(?:step\s*\d+|\d+)\s*[:.\-)]?\s*/i, '').trim())
         .filter(Boolean);
@@ -405,6 +477,10 @@ function renderSingleRecipeHTML(meal) {
     container.append(imageColumn, detailsColumn);
 }
 
+/**
+ * Crea un'etichetta con icona e testo come nodi distinti, evitando markup
+ * costruito a partire da categoria o area restituite dall'API.
+ */
 function createRecipeBadge(iconClass, label, badgeClass) {
     const badge = document.createElement('span');
     badge.className = `recipe-badge ${badgeClass}`;
@@ -414,6 +490,9 @@ function createRecipeBadge(iconClass, label, badgeClass) {
     return badge;
 }
 
+/**
+ * Restituisce un titolo di sezione riutilizzabile per ingredienti e preparazione.
+ */
 function createRecipeSectionTitle(label) {
     const heading = document.createElement('h3');
     heading.className = 'recipe-section-title';
@@ -421,6 +500,10 @@ function createRecipeSectionTitle(label) {
     return heading;
 }
 
+/**
+ * Collega alla ricetta le azioni private dell'utente: aggiunta al ricettario,
+ * salvataggio della nota e rimozione esplicita della nota.
+ */
 function setupRecipeInteractions(mealId) {
     const userInteractions = PGRC.getUserInteractions(mealId);
 
@@ -441,6 +524,7 @@ function setupRecipeInteractions(mealId) {
         }
     };
 
+    // Il testo e l'icona riflettono sempre lo stato restituito dal core.
     updateBookBtnUI(userInteractions.saved);
     bookBtn.addEventListener('click', () => {
         updateBookBtnUI(PGRC.toggleRecipeInBook(mealId));
@@ -453,6 +537,7 @@ function setupRecipeInteractions(mealId) {
     const showNoteStatus = message => {
         noteStatus.textContent = message;
         noteStatus.classList.remove('is-hidden');
+        // Il feedback è temporaneo e non interferisce con il contenuto della nota.
         setTimeout(() => noteStatus.classList.add('is-hidden'), 2000);
     };
 
@@ -462,6 +547,7 @@ function setupRecipeInteractions(mealId) {
     });
 
     document.getElementById('deleteNoteBtn').addEventListener('click', () => {
+        // Richiedere conferma evita di cancellare la nota con un click involontario.
         if (!window.confirm("Vuoi eliminare la nota privata per questa ricetta?")) return;
 
         PGRC.deletePrivateNote(mealId);
@@ -470,14 +556,21 @@ function setupRecipeInteractions(mealId) {
     });
 }
 
+/**
+ * Mostra le recensioni pubbliche e, se l'utente è autenticato, abilita
+ * l'inserimento e la rimozione delle sole recensioni che gli appartengono.
+ */
 function setupRecipeReviews(mealId, user) {
     const list = document.getElementById('reviews-list');
     const formArea = document.getElementById('review-form-area');
     const reviewForm = document.getElementById('addReviewForm');
     const reviewDate = document.getElementById('reviewDate');
     const today = new Date();
+    // Impedisce di selezionare dal form una data di preparazione futura.
     reviewDate.max = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+    // Rigenera l'elenco dopo ogni modifica, lasciando al core la verifica
+    // dell'autore e la persistenza dei dati.
     const renderReviews = () => {
         const reviews = PGRC.getReviews(mealId);
         list.replaceChildren();
@@ -500,6 +593,8 @@ function setupRecipeReviews(mealId, user) {
             reviewElement.appendChild(ratings);
 
             if (user && review.username === user.username) {
+                // Il controllo dell'autore viene ripetuto anche dal core
+                // quando il pulsante viene attivato.
                 const removeButton = document.createElement('button');
                 removeButton.type = 'button';
                 removeButton.className = 'btn btn-link btn-xs';
@@ -525,6 +620,7 @@ function setupRecipeReviews(mealId, user) {
     renderReviews();
     if (user) formArea.classList.remove('is-hidden');
 
+    // Le date e i voti inseriti vengono validati e salvati dal core.
     reviewForm.addEventListener('submit', (e) => {
         e.preventDefault();
         try {
@@ -546,13 +642,21 @@ function setupRecipeReviews(mealId, user) {
 // 5. EVENT LISTENER (FORM)
 // ==========================================
 
+/**
+ * Registra i listener solo sugli elementi presenti nella pagina corrente.
+ * La verifica dei nodi consente allo stesso controller di essere incluso
+ * in più pagine senza richiedere markup duplicato.
+ */
 function setupEventListeners() {
     const myRecipesContainer = document.getElementById('my-recipes-container');
     if (myRecipesContainer) {
+        // Listener delegato: le card vengono ricreate dopo ogni rimozione,
+        // ma il contenitore resta stabile e continua a ricevere i click.
         myRecipesContainer.addEventListener('click', (e) => {
             const removeButton = e.target.closest('.remove-recipe-btn');
             if (!removeButton) return;
 
+            // Alterna lo stato salvato nel core e ridisegna l'elenco aggiornato.
             PGRC.toggleRecipeInBook(removeButton.dataset.mealId);
             loadMyRecipesPage();
         });
@@ -562,6 +666,7 @@ function setupEventListeners() {
     if (accountForm) {
         accountForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            // Il campo password è opzionale: il core la cambia solo se valorizzata.
             const username = document.getElementById('accountUsername').value;
             const email = document.getElementById('accountEmail').value;
             const password = document.getElementById('accountPassword').value;
@@ -571,6 +676,8 @@ function setupEventListeners() {
                 .filter(Boolean);
 
             try {
+                // L'aggiornamento è asincrono perché il core protegge la password
+                // con hashing prima di persistere i nuovi dati.
                 await PGRC.updateUserData(username, email, password, preferences);
                 document.getElementById('accountPassword').value = '';
                 updateNavbarUI();
@@ -584,6 +691,7 @@ function setupEventListeners() {
     const deleteAccountBtn = document.getElementById('deleteAccountBtn');
     if (deleteAccountBtn) {
         deleteAccountBtn.addEventListener('click', () => {
+            // La cancellazione è irreversibile, quindi richiede conferma esplicita.
             if (!window.confirm("Vuoi davvero eliminare il tuo account? Questa operazione non può essere annullata.")) {
                 return;
             }
@@ -600,6 +708,7 @@ function setupEventListeners() {
     if (searchForm) {
         const searchInput = document.getElementById('searchInput');
         const searchType = document.getElementById('searchType');
+        // Aggiorna i suggerimenti e i vincoli del campo quando cambia la modalità.
         const updateSearchInput = () => {
             const isLetterSearch = searchType.value === 'letter';
             searchInput.placeholder = isLetterSearch
@@ -626,6 +735,8 @@ function setupEventListeners() {
 
         searchForm.addEventListener('submit', (e) => {
             const input = searchInput.value.trim();
+            // Evita una navigazione con parametro vuoto, che non corrisponde
+            // a una richiesta di ricerca valida.
             if (!input.trim()) {
                 e.preventDefault();
             }
@@ -640,6 +751,7 @@ function setupEventListeners() {
             const pass = document.getElementById('loginPass').value;
 
             try {
+                // Il login verifica la password nel core e poi apre il ricettario.
                 await PGRC.login(user, pass);
                 window.location.href = 'my_recipes.html';
             } catch (error) {
@@ -658,6 +770,8 @@ function setupEventListeners() {
             const pref = document.getElementById('regPref').value.split(',');
 
             try {
+                // La registrazione salva i dati tramite il core; l'accesso viene
+                // richiesto separatamente dopo la conferma all'utente.
                 await PGRC.register(user, email, pass, pref);
                 alert("Registrazione completata! Ora puoi fare il login.");
                 window.location.href = 'login.html';
@@ -671,6 +785,8 @@ function setupEventListeners() {
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) {
         loadMoreBtn.addEventListener('click', async () => {
+            // Conserva una copia dei nodi originali per ripristinare esattamente
+            // il pulsante anche se la richiesta API termina con un errore.
             const originalContent = Array.from(loadMoreBtn.childNodes, node => node.cloneNode(true));
             const spinner = document.createElement('i');
             spinner.className = 'fa fa-spinner fa-spin';
@@ -678,11 +794,14 @@ function setupEventListeners() {
             loadMoreBtn.disabled = true;
 
             try {
+                // Il core recupera e persiste le ricette, mentre qui si aggiorna
+                // soltanto la griglia già visibile.
                 const newRecipes = await PGRC.getRandomRecipes(6);
                 appendRecipesToGrid(newRecipes, 'recipe-container');
             } catch (error) {
                 alert(getErrorMessage(error));
             } finally {
+                // Il finally garantisce il ripristino dello stato interattivo.
                 loadMoreBtn.replaceChildren(...originalContent);
                 loadMoreBtn.disabled = false;
             }

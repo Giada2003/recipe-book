@@ -3,8 +3,13 @@
  * Core System - Gestione Web Storage, API e Autenticazione
  */
 
+/**
+ * Coordina persistenza locale, richieste a TheMealDB e operazioni sugli account.
+ * La UI usa questa classe invece di accedere direttamente a storage o API.
+ */
 class PGRCSystem {
     constructor() {
+        // Chiave unica del database locale, endpoint versionato e costo PBKDF2.
         this.dbKey = 'pgrc_db';
         this.apiUrl = 'https://www.themealdb.com/api/json/v1/1';
         this.passwordIterations = 600000;
@@ -14,6 +19,11 @@ class PGRCSystem {
     // 1. GESTIONE WEB STORAGE (DATABASE LOCALE)
     // ==========================================
 
+    /**
+     * Legge e valida l'intero database prima di restituirlo.
+     * Uno storage assente crea la struttura iniziale; uno storage presente ma
+     * danneggiato o incoerente genera un errore, senza sovrascrivere i dati.
+     */
     _getDB() {
         let serialized;
         try {
@@ -38,6 +48,9 @@ class PGRCSystem {
             throw this._createError('STORAGE', "Il database locale è incompleto o ha una struttura non valida.");
         }
 
+        // Questi campi sono stati aggiunti dopo le prime versioni del database:
+        // valori assenti sono inizializzati, ma valori presenti con tipo errato
+        // non vengono corretti silenziosamente.
         db.reviews = db.reviews === undefined ? {} : db.reviews;
         db.loadedRecipeLetters = db.loadedRecipeLetters === undefined ? [] : db.loadedRecipeLetters;
         if (!this._isRecord(db.reviews) || !Array.isArray(db.loadedRecipeLetters) ||
@@ -45,11 +58,14 @@ class PGRCSystem {
             throw this._createError('STORAGE', "Il database locale contiene dati incompleti o non validi.");
         }
 
+        // Verifica l'identità delle chiavi delle ricette e i campi minimi usati
+        // dalla UI; i dettagli possono essere parziali e recuperati dall'API.
         for (const [mealId, meal] of Object.entries(db.recipes)) {
             if (!this._isRecord(meal) || String(meal.idMeal) !== mealId || typeof meal.strMeal !== 'string') {
                 throw this._createError('STORAGE', `I dati locali della ricetta ${mealId} sono incompleti.`);
             }
         }
+        // Ogni account deve avere credenziali e il proprio spazio interazioni.
         for (const [username, user] of Object.entries(db.users)) {
             if (!this._isRecord(user) || typeof user.email !== 'string' ||
                 !(typeof user.password === 'string' || this._isRecord(user.password)) ||
@@ -57,6 +73,8 @@ class PGRCSystem {
                 throw this._createError('STORAGE', `I dati locali dell'utente ${username} sono incompleti.`);
             }
         }
+        // Le interazioni usano un record per utente e una voce per ricetta.
+        // I campi opzionali delle versioni precedenti sono accettati se validi.
         for (const [username, interactions] of Object.entries(db.interactions)) {
             if (!this._isRecord(interactions)) {
                 throw this._createError('STORAGE', "Le interazioni salvate nel browser hanno una struttura non valida.");
@@ -69,11 +87,13 @@ class PGRCSystem {
                 }
             }
         }
+        // Le recensioni pubbliche sono indicizzate per ID ricetta.
         for (const reviews of Object.values(db.reviews)) {
             if (!Array.isArray(reviews)) {
                 throw this._createError('STORAGE', "Le recensioni salvate nel browser hanno una struttura non valida.");
             }
         }
+        // Impedisce di continuare con una sessione che punta a un account rimosso.
         if (db.currentUser && !db.users[db.currentUser]) {
             throw this._createError('STORAGE', "La sessione locale fa riferimento a un utente inesistente.");
         }
@@ -81,10 +101,15 @@ class PGRCSystem {
         return db;
     }
 
+    /** Distingue gli oggetti dati dagli array e dai valori nulli. */
     _isRecord(value) {
         return value !== null && typeof value === 'object' && !Array.isArray(value);
     }
 
+    /**
+     * Crea errori con un codice stabile per permettere alla UI di mostrare
+     * messaggi diversi senza dipendere dal testo tecnico dell'eccezione.
+     */
     _createError(code, message, cause) {
         const error = new Error(message);
         error.code = code;
@@ -92,6 +117,11 @@ class PGRCSystem {
         return error;
     }
 
+    /**
+     * Recupera e decodifica JSON dall'API.
+     * I rifiuti della richiesta sono errori di connessione; status HTTP e JSON
+     * non valido sono errori di risposta API.
+     */
     async _fetchJson(url) {
         let response;
         try {
@@ -116,6 +146,10 @@ class PGRCSystem {
         return data;
     }
 
+    /**
+     * Estrae l'elenco meals dopo averne controllato forma e campi identificativi.
+     * TheMealDB usa `null` come risposta valida quando una ricerca non trova ricette.
+     */
     _readMeals(data) {
         if (!Object.prototype.hasOwnProperty.call(data, 'meals') ||
             !(data.meals === null || Array.isArray(data.meals))) {
@@ -129,6 +163,7 @@ class PGRCSystem {
         return meals;
     }
 
+    /** Serializza tutto il database e converte i problemi di quota/accesso in STORAGE. */
     _saveDB(db) {
         try {
             localStorage.setItem(this.dbKey, JSON.stringify(db));
@@ -137,6 +172,7 @@ class PGRCSystem {
         }
     }
 
+    /** Restituisce lo schema iniziale completo del database locale. */
     _defaultDB() {
         return {
             recipes: {},        // Oggetto con ID ricetta come chiave per evitare duplicati
@@ -148,10 +184,12 @@ class PGRCSystem {
         };
     }
 
+    /** Converte byte di sale/hash nella rappresentazione esadecimale persistita. */
     _bytesToHex(bytes) {
         return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
     }
 
+    /** Decodifica solo stringhe esadecimali a byte completi. */
     _hexToBytes(hex) {
         if (typeof hex !== 'string' || !/^(?:[0-9a-f]{2})+$/i.test(hex)) {
             throw new Error("Formato password archiviata non valido.");
@@ -159,6 +197,10 @@ class PGRCSystem {
         return Uint8Array.from(hex.match(/.{2}/gi), byte => parseInt(byte, 16));
     }
 
+    /**
+     * Applica PBKDF2-SHA256 alla password con il sale e il numero di iterazioni
+     * forniti; Web Crypto esegue il calcolo senza bloccare il thread UI.
+     */
     async _derivePasswordHash(password, salt, iterations) {
         const key = await crypto.subtle.importKey(
             'raw',
@@ -174,6 +216,10 @@ class PGRCSystem {
         );
     }
 
+    /**
+     * Crea un salt casuale e memorizza algoritmo, costo, salt e hash.
+     * La password originale non viene inclusa nel risultato persistito.
+     */
     async _hashPassword(password) {
         if (typeof password !== 'string') throw new Error("La password non è valida.");
 
@@ -187,6 +233,10 @@ class PGRCSystem {
         };
     }
 
+    /**
+     * Supporta le vecchie password in chiaro durante la migrazione e verifica
+     * gli hash confrontandoli senza interrompere il confronto al primo byte diverso.
+     */
     async _verifyPassword(password, storedPassword) {
         if (typeof storedPassword === 'string') return storedPassword === password;
         if (!storedPassword || storedPassword.algorithm !== 'PBKDF2-SHA256' ||
@@ -209,6 +259,10 @@ class PGRCSystem {
         return difference === 0;
     }
 
+    /**
+     * Converte gli account creati dalle versioni precedenti all'hashing.
+     * Il database viene scritto una sola volta solo se almeno una password cambia.
+     */
     async _migratePlaintextPasswords(db) {
         let changed = false;
         for (const user of Object.values(db.users || {})) {
@@ -225,19 +279,24 @@ class PGRCSystem {
     // ==========================================
 
     /**
-     * Inizializza l'app. Da chiamare al DOMContentLoaded.
+     * Inizializza i dati locali e carica il catalogo alfabetico.
+     * Le lettere sono richieste in parallelo; un successo parziale viene
+     * conservato, mentre un fallimento totale viene propagato alla UI.
      */
     async startup() {
         const db = this._getDB();
         db.recipes = db.recipes || {};
         await this._migratePlaintextPasswords(db);
 
+        // Le lettere già completate non vengono scaricate di nuovo al successivo avvio.
         const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(97 + index));
         const loadedLetters = new Set(Array.isArray(db.loadedRecipeLetters) ? db.loadedRecipeLetters : []);
         const lettersToFetch = alphabet.filter(letter => !loadedLetters.has(letter));
         if (lettersToFetch.length === 0) return;
 
         console.log(`Popolamento dati: ricerca ricette per ${lettersToFetch.length} iniziali...`);
+        // allSettled permette di salvare le risposte valide anche quando una
+        // parte delle richieste fallisce per rete o per risposta API errata.
         const results = await Promise.allSettled(lettersToFetch.map(async letter => {
             const data = await this._fetchJson(`${this.apiUrl}/search.php?f=${letter}`);
             return { letter, meals: this._readMeals(data) };
@@ -246,6 +305,7 @@ class PGRCSystem {
         let successfulResponses = 0;
         results.forEach((result, index) => {
             if (result.status === 'rejected') {
+                // La lettera non viene marcata come caricata: potrà essere ritentata.
                 console.error(`Errore caricamento ricette per la lettera ${lettersToFetch[index]}:`, result.reason);
                 return;
             }
@@ -258,6 +318,8 @@ class PGRCSystem {
             successfulResponses++;
         });
 
+        // Se nessuna lettera è riuscita, non registrare uno startup riuscito
+        // né sostituire l'eventuale database con risultati vuoti.
         if (successfulResponses === 0) {
             throw results.find(result => result.status === 'rejected').reason;
         }
@@ -271,6 +333,10 @@ class PGRCSystem {
     // 3. AUTENTICAZIONE UTENTE
     // ==========================================
 
+    /**
+     * Crea un account con password derivata e spazio interazioni vuoto.
+     * La seconda lettura dopo l'hashing ricontrolla l'unicità prima della scrittura.
+     */
     async register(username, email, password, preferences = []) {
         const db = this._getDB();
 
@@ -293,13 +359,17 @@ class PGRCSystem {
             preferences: preferences
         };
 
-        // Inizializza lo spazio interazioni per questo utente
+        // Mantiene la corrispondenza richiesta da _getDB tra account e interazioni.
         updatedDb.interactions[username] = {};
 
         this._saveDB(updatedDb);
         return true;
     }
 
+    /**
+     * Verifica le credenziali, migra al volo un'eventuale password legacy e
+     * registra l'utente come sessione corrente solo dopo una verifica riuscita.
+     */
     async login(username, password) {
         const db = this._getDB();
         const user = db.users[username];
@@ -316,12 +386,17 @@ class PGRCSystem {
         return true;
     }
 
+    /** Termina la sessione corrente senza rimuovere dati account o ricette. */
     logout() {
         const db = this._getDB();
         db.currentUser = null;
         this._saveDB(db);
     }
 
+    /**
+     * Restituisce i dati pubblici dell'utente attivo escludendo sempre la password.
+     * In assenza di una sessione, il valore null semplifica i controlli della UI.
+     */
     getCurrentUser() {
         const db = this._getDB();
         if (!db.currentUser) return null;
@@ -329,6 +404,11 @@ class PGRCSystem {
         return { username: db.currentUser, ...userData };
     }
 
+    /**
+     * Aggiorna i dati dell'account e, se necessario, ne cambia lo username.
+     * La rinomina trasferisce le interazioni e aggiorna gli autori delle
+     * recensioni pubbliche, preservando il collegamento ai dati dell'utente.
+     */
     async updateUserData(username, email, password, preferences = []) {
         const db = this._getDB();
         const currentUsername = db.currentUser;
@@ -346,6 +426,8 @@ class PGRCSystem {
         }
         const hashedPassword = password ? await this._hashPassword(password) : null;
 
+        // Prima della rinomina assicura che anche le recensioni storiche
+        // siano nell'archivio pubblico che verrà aggiornato sotto.
         this._migrateLegacyReviews(db);
 
         const user = db.users[currentUsername];
@@ -372,6 +454,11 @@ class PGRCSystem {
         return true;
     }
 
+    /**
+     * Elimina account, interazioni e recensioni pubblicate dall'utente attivo.
+     * Rimuovere le recensioni evita che una futura registrazione con lo stesso
+     * username erediti contenuti associati al vecchio account.
+     */
     deleteAccount() {
         const db = this._getDB();
         const user = db.currentUser;
@@ -398,6 +485,10 @@ class PGRCSystem {
     // 4. RICERCA RICETTE (PROGETTO FULL)
     // ==========================================
 
+    /**
+     * Cerca per nome, ingrediente o iniziale sull'API; la modalità descrizione
+     * filtra invece i testi delle ricette complete già presenti nella cache.
+     */
     async searchRecipes(query, type = 'name') {
         if (typeof query !== 'string') {
             throw this._createError('INVALID_INPUT', "Inserisci un testo da cercare.");
@@ -408,6 +499,8 @@ class PGRCSystem {
         if (type === 'description') {
             const db = this._getDB();
             const normalizedQuery = searchTerm.toLocaleLowerCase();
+            // Includere ingredienti e misure consente di trovare una ricetta
+            // anche quando il termine compare nei campi usati per cucinarla.
             const searchableFields = ['strMeal', 'strCategory', 'strArea', 'strInstructions', 'strTags'];
 
             return Object.values(db.recipes).filter(meal => {
@@ -421,6 +514,8 @@ class PGRCSystem {
             });
         }
 
+        // I diversi tipi di ricerca dell'interfaccia corrispondono agli
+        // endpoint dedicati di TheMealDB; il termine viene codificato nell'URL.
         let endpoint;
         if (type === 'name') endpoint = `/search.php?s=${encodeURIComponent(searchTerm)}`;
         else if (type === 'ingredient') endpoint = `/filter.php?i=${encodeURIComponent(searchTerm)}`;
@@ -438,6 +533,8 @@ class PGRCSystem {
         if (meals.length === 0) return [];
 
         const db = this._getDB();
+        // Le ricerche per ingrediente/lettera possono restituire riepiloghi:
+        // non sovrascrivere una ricetta completa già in cache con quei riepiloghi.
         meals.forEach(meal => {
             if (!db.recipes[meal.idMeal] || !this._isCompleteRecipe(db.recipes[meal.idMeal])) {
                 db.recipes[meal.idMeal] = meal;
@@ -447,6 +544,10 @@ class PGRCSystem {
         return meals;
     }
 
+    /**
+     * Indica se un record contiene i campi minimi necessari per mostrare
+     * il dettaglio offline senza richiedere un lookup all'API.
+     */
     _isCompleteRecipe(meal) {
         return this._isRecord(meal) &&
             meal.idMeal != null &&
@@ -455,10 +556,16 @@ class PGRCSystem {
             meal.strInstructions.trim() !== '';
     }
 
+    /** Restituisce tutte le ricette già memorizzate, complete o riepilogative. */
     getCachedRecipes() {
         return Object.values(this._getDB().recipes);
     }
 
+    /**
+     * Recupera il dettaglio per ID, usando prima una copia completa in cache.
+     * Se la copia locale è parziale e il browser è offline, distingue questa
+     * situazione da una ricetta assente o da una risposta API malformata.
+     */
     async getRecipeById(mealId) {
         const db = this._getDB();
         const cachedMeal = db.recipes[mealId];
@@ -491,11 +598,17 @@ class PGRCSystem {
             throw this._createError('API_RESPONSE', "Errore nella risposta API: i dettagli della ricetta sono incompleti.");
         }
 
+        // Aggiorna la cache soltanto dopo aver validato corrispondenza e completezza.
         db.recipes[meal.idMeal] = meal;
         this._saveDB(db);
         return meal;
     }
 
+    /**
+     * Richiede più ricette casuali in parallelo, le valida e le salva insieme.
+     * Una risposta valida vuota viene ignorata se le altre richieste hanno prodotto
+     * ricette; se tutte sono vuote, il metodo segnala una risposta API non utile.
+     */
     async getRandomRecipes(count) {
         if (!Number.isInteger(count) || count < 1) {
             throw this._createError('INVALID_INPUT', "Il numero di ricette richiesto non è valido.");
@@ -504,6 +617,7 @@ class PGRCSystem {
         const responses = await Promise.all(Array.from({ length: count }, () =>
             this._fetchJson(`${this.apiUrl}/random.php`)
         ));
+        // Ogni risposta random contiene al massimo un elemento da aggiungere.
         const meals = responses.flatMap(response => this._readMeals(response).slice(0, 1));
         if (meals.length === 0) {
             throw this._createError('API_RESPONSE', "Errore nella risposta API: non sono state restituite ricette.");
@@ -521,6 +635,11 @@ class PGRCSystem {
     // 5. GESTIONE RICETTARIO, NOTE E RECENSIONI
     // ==========================================
 
+    /**
+     * Garantisce una voce di interazione per la coppia utente/ricetta.
+     * Restituisce lo username per evitare che i metodi chiamanti usino
+     * un'identità ricavata da input esterno.
+     */
     _initUserInteraction(db, mealId) {
         const user = db.currentUser;
         if (!user) throw new Error("Utente non loggato.");
@@ -531,6 +650,10 @@ class PGRCSystem {
         return user;
     }
 
+    /**
+     * Inverte lo stato salvato della ricetta per l'utente corrente.
+     * Il valore booleano restituito rappresenta lo stato risultante.
+     */
     toggleRecipeInBook(mealId) {
         const db = this._getDB();
         const user = this._initUserInteraction(db, mealId);
@@ -542,6 +665,7 @@ class PGRCSystem {
         return db.interactions[user][mealId].saved; // Ritorna true se salvata, false se rimossa
     }
 
+    /** Salva o sostituisce la nota privata associata a una ricetta. */
     savePrivateNote(mealId, noteText) {
         const db = this._getDB();
         const user = this._initUserInteraction(db, mealId);
@@ -550,6 +674,10 @@ class PGRCSystem {
         this._saveDB(db);
     }
 
+    /**
+     * Rimuove esplicitamente il campo nota lasciando intatte le altre
+     * interazioni (ad esempio il salvataggio nel ricettario).
+     */
     deletePrivateNote(mealId) {
         const db = this._getDB();
         const user = this._initUserInteraction(db, mealId);
@@ -558,6 +686,11 @@ class PGRCSystem {
         this._saveDB(db);
     }
 
+    /**
+     * Importa una sola volta le recensioni presenti nelle vecchie interazioni
+     * private nell'archivio pubblico indicizzato per ricetta.
+     * Gli ID legacy deterministici rendono l'operazione idempotente.
+     */
     _migrateLegacyReviews(db) {
         if (db.legacyReviewsMigrated) return;
 
@@ -569,6 +702,8 @@ class PGRCSystem {
 
                 db.reviews[mealId] = db.reviews[mealId] || [];
                 interaction.reviews.forEach((review, index) => {
+                    // Evita duplicati se la migrazione viene ripetuta prima
+                    // che il flag di completamento sia persistito.
                     const id = `legacy-${username}-${mealId}-${index}`;
                     if (!db.reviews[mealId].some(existing => existing.id === id)) {
                         db.reviews[mealId].push({ ...review, id, username });
@@ -581,6 +716,10 @@ class PGRCSystem {
         this._saveDB(db);
     }
 
+    /**
+     * Aggiunge una recensione pubblica dopo aver verificato sessione,
+     * formato/data di preparazione e voti ammessi.
+     */
     addReview(mealId, date, difficulty, taste) {
         const db = this._getDB();
         const user = db.currentUser;
@@ -588,6 +727,8 @@ class PGRCSystem {
 
         this._migrateLegacyReviews(db);
 
+        // Il controllo di round-trip rifiuta date impossibili che possono
+        // superare una semplice verifica del formato YYYY-MM-DD.
         const parsedDate = new Date(`${date}T00:00:00.000Z`);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) ||
             Number.isNaN(parsedDate.getTime()) ||
@@ -601,6 +742,7 @@ class PGRCSystem {
             throw new Error("La data di preparazione non può essere futura.");
         }
 
+        // Accetta solo voti interi tra 1 e 5 anche se arrivano dal form come stringhe.
         const numericDifficulty = Number(difficulty);
         const numericTaste = Number(taste);
         if (!Number.isInteger(numericDifficulty) || numericDifficulty < 1 || numericDifficulty > 5 ||
@@ -622,12 +764,20 @@ class PGRCSystem {
         return newReview;
     }
 
+    /**
+     * Restituisce le recensioni pubbliche della ricetta, migrando prima
+     * eventuali contenuti legacy ancora presenti nelle interazioni private.
+     */
     getReviews(mealId) {
         const db = this._getDB();
         this._migrateLegacyReviews(db);
         return db.reviews[mealId] || [];
     }
 
+    /**
+     * Rimuove una recensione solo se l'utente autenticato ne è l'autore.
+     * Restituisce false quando l'elemento non esiste o non appartiene all'utente.
+     */
     removeReview(mealId, reviewId) {
         const db = this._getDB();
         const user = db.currentUser;
@@ -643,6 +793,10 @@ class PGRCSystem {
         return true;
     }
 
+    /**
+     * Fornisce lo stato delle interazioni per la ricetta; se non esiste ancora
+     * una voce, restituisce i valori iniziali senza scrivere nello storage.
+     */
     getUserInteractions(mealId) {
         const db = this._getDB();
         const user = db.currentUser;
@@ -652,6 +806,11 @@ class PGRCSystem {
         return db.interactions[user][mealId];
     }
 
+    /**
+     * Raccoglie le ricette salvate dall'utente corrente.
+     * Una voce salvata senza la ricetta corrispondente è un'incoerenza locale,
+     * quindi genera un errore invece di essere ignorata silenziosamente.
+     */
     getPersonalRecipeBook() {
         const db = this._getDB();
         const user = db.currentUser;
