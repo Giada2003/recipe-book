@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modifica utente</title>
+
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/font-awesome.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <nav class="navbar navbar-default navbar-custom">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="index.html">
+          <img src="images/logo.png" alt="Logo" class="logo-img">
+        </a>
+      </div>
+      <ul class="nav navbar-nav" id="main-navbar"></ul>
+    </div>
+  </nav>
+
+  <main class="container" id="account-management-container">
+    <h2 class="text-center page-title">Modifica utente</h2>
+    <div id="account-management" class="panel panel-default is-hidden">
+      <div class="panel-body">
+        <form id="accountForm">
+          <div class="form-group">
+            <label for="accountUsername">Username</label>
+            <input type="text" id="accountUsername" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="accountEmail">Email</label>
+            <input type="email" id="accountEmail" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="accountPassword">Nuova password</label>
+            <input type="password" id="accountPassword" class="form-control" autocomplete="new-password" placeholder="Lascia vuoto per mantenere quella attuale">
+          </div>
+          <div class="form-group">
+            <label for="accountPreferences">Piatti preferiti (separati da virgola)</label>
+            <input type="text" id="accountPreferences" class="form-control">
+          </div>
+          <button type="submit" class="btn btn-success">Salva modifiche</button>
+        </form>
+        <hr>
+        <button type="button" id="deleteAccountBtn" class="btn btn-danger">Elimina account</button>
+        <a href="my_recipes.html" class="btn btn-default">Torna al ricettario</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/pgrc-core.js"></script>
+  <script src="js/ui-controller.js"></script>
+</body>
+</html>

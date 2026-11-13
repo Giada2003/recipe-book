@@ -97,11 +97,25 @@ body {
   display: flex;
 }
 
+.search-container select {
+  width: 170px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid #eee;
+  color: #333;
+  font-size: 14px;
+}
+
 .search-container input {
+  min-width: 0;
+  flex-grow: 1;
   padding: 15px 25px !important;
   background: transparent !important;
+  border: 0;
   color: #333 !important;
   font-size: 18px !important;
+  outline: none;
 }
 
 .search-container input::placeholder {
@@ -116,6 +130,11 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+.search-container .search-submit-btn {
+  border: 0;
+  outline: none;
+}
+
 .search-container button:hover {
   background: #3baf36 !important;
   color: #fff !important;
@@ -128,6 +147,10 @@ body {
   font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+.homepage-title {
+  margin-top: 50px;
 }
 
 .section-title::after {
@@ -152,9 +175,94 @@ body {
   height: auto;
 }
 
+.recipe-card {
+  margin-bottom: 30px;
+}
+
+.recipe-item img.recipe-card-image {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.recipe-card-title {
+  margin-top: 15px;
+  color: #333;
+}
+
+.home-loading-state {
+  padding: 40px;
+}
+
+.loading-spinner {
+  color: #3baf36;
+}
+
+.loading-message {
+  margin-top: 15px;
+  color: #666;
+  font-size: 18px;
+}
+
+.load-more-container {
+  margin-top: 20px;
+  margin-bottom: 50px;
+}
+
+.load-more-btn {
+  padding: 12px 30px;
+  background-color: #3baf36;
+  border: 0;
+  border-radius: 25px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.load-more-icon {
+  margin-left: 5px;
+}
+
+.page-title {
+  margin: 30px 0;
+}
+
+.page-message {
+  padding: 40px;
+}
+
+.auth-page-container {
+  margin-top: 50px;
+}
+
+.auth-page-login {
+  max-width: 400px;
+  margin-top: 100px;
+}
+
+.auth-page-register {
+  max-width: 500px;
+}
+
+.auth-page-footer {
+  margin-top: 15px;
+}
+
 /* ==========================================================================
    Recipe details
    ========================================================================== */
+
+.recipe-page {
+  margin-top: 40px;
+  margin-bottom: 60px;
+}
+
+.recipe-loading-state {
+  padding: 50px;
+}
 
 .recipe-main-img {
   width: 100%;
@@ -284,6 +392,147 @@ body {
   border: 0 !important;
   font-size: 16px !important;
   font-weight: bold !important;
+}
+
+.recipe-interactions {
+  margin-top: 50px;
+}
+
+.interaction-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.interaction-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 300px;
+}
+
+.interaction-panel {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.note-panel-heading {
+  margin: 0;
+  padding: 15px;
+  background-color: #3baf36;
+  border-radius: 4px 4px 0 0;
+  color: #fff;
+}
+
+.review-panel-heading {
+  margin: 0;
+  padding: 15px;
+  background-color: transparent;
+  border-bottom: 0;
+}
+
+.interaction-panel-title {
+  color: #777;
+  font-size: 22px;
+  font-weight: 300;
+}
+
+.note-panel-heading .interaction-panel-title {
+  color: #fff;
+}
+
+.note-panel-body {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.reviews-panel-body {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-top: 0 !important;
+}
+
+.private-note-input {
+  width: 100%;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  resize: vertical;
+}
+
+.save-note-button {
+  background-color: #3baf36;
+}
+
+.delete-note-button {
+  margin-top: 8px;
+}
+
+.note-status-container {
+  margin-top: 5px;
+}
+
+.review-star {
+  color: #777;
+}
+
+.reviews-list {
+  max-height: 250px;
+  margin-bottom: 15px;
+  overflow-y: auto;
+  color: #777;
+}
+
+.review-item {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.review-form-divider {
+  margin: 10px 0;
+  border-color: #eee;
+}
+
+.review-label {
+  display: block;
+  color: #777;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.review-date-input,
+.review-rating-select {
+  border: 1px solid #ddd;
+}
+
+.review-rating-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.review-rating-field {
+  flex: 1;
+}
+
+.review-rating-select {
+  width: 100%;
+}
+
+.review-submit-button {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.is-hidden {
+  display: none !important;
 }
 
 /* ==========================================================================

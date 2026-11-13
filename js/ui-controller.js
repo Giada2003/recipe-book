@@ -5,19 +5,38 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Inizializza i dati dal Web Storage / API
-    await PGRC.startup();
+    let startupError = null;
+    try {
+        await PGRC.startup();
+    } catch (error) {
+        if (error.code === 'STORAGE') {
+            renderGlobalError(error);
+            return;
+        }
+        startupError = error;
+        console.error("Errore di inizializzazione:", error);
+    }
 
     // 2. Aggiorna sempre la Navbar
-    updateNavbarUI();
+    try {
+        updateNavbarUI();
+    } catch (error) {
+        renderGlobalError(error);
+        return;
+    }
 
     // 3. SMISTATORE PAGINE (Router)
     if (document.getElementById('recipe-container')) {
         // Siamo in index.html (Homepage pubblica)
-        handleSearchAndRendering();
+        handleSearchAndRendering(startupError);
     }
     else if (document.getElementById('my-recipes-container')) {
         // Siamo in my_recipes.html (Ricettario protetto)
         loadMyRecipesPage();
+    }
+    else if (document.getElementById('account-management-container')) {
+        // Siamo in edit_user.html (Modifica utente protetta)
+        loadAccountPage();
     }
     else if (document.getElementById('recipe-details-container')) {
         // Siamo in recipe.html (Dettaglio singola ricetta)
@@ -28,6 +47,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
 });
 
+function getErrorMessage(error) {
+    if (error.code === 'CONNECTION') return "Errore di connessione. Controlla la rete e riprova.";
+    if (error.code === 'API_RESPONSE') return "Errore nella risposta API. Riprova più tardi.";
+    if (error.code === 'RECIPE_NOT_FOUND') return "Questa ricetta non è più disponibile sull'API.";
+    if (error.code === 'INCOMPLETE_STORAGE') return error.message;
+    if (error.code === 'STORAGE') return error.message;
+    return error.message || "Si è verificato un errore imprevisto.";
+}
+
+function renderMessage(container, message, className = 'col-12 text-center') {
+    container.replaceChildren();
+    const wrapper = document.createElement('div');
+    wrapper.className = className;
+    const paragraph = document.createElement('p');
+    paragraph.textContent = message;
+    wrapper.appendChild(paragraph);
+    container.appendChild(wrapper);
+}
+
+function renderLoginMessage(container, message) {
+    container.replaceChildren();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'text-center page-message';
+    const heading = document.createElement('h4');
+    heading.className = 'text-danger';
+    heading.textContent = message;
+    const loginLink = document.createElement('a');
+    loginLink.href = 'login.html';
+    loginLink.className = 'btn btn-primary';
+    loginLink.textContent = 'Accedi';
+    wrapper.append(heading, loginLink);
+    container.appendChild(wrapper);
+}
+
+function renderGlobalError(error) {
+    const container = document.createElement('main');
+    container.className = 'container app-error-message';
+    const message = document.createElement('p');
+    message.className = 'text-danger';
+    message.textContent = getErrorMessage(error);
+    container.appendChild(message);
+    document.body.prepend(container);
+}
+
 // ==========================================
 // 1. NAVBAR E HOMEPAGE (PUBBLICA)
 // ==========================================
@@ -37,43 +100,74 @@ function updateNavbarUI() {
     const navUl = document.getElementById('main-navbar');
 
     if (!navUl) return;
+    navUl.replaceChildren();
+
+    const addLink = (text, href, id) => {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = href;
+        link.textContent = text;
+        if (id) link.id = id;
+        item.appendChild(link);
+        navUl.appendChild(item);
+        return link;
+    };
 
     if (user) {
-        navUl.innerHTML = `
-            <li><a href="index.html">Home</a></li>
-            <li><a href="my_recipes.html">Il Mio Ricettario (${user.username})</a></li>
-            <li><a href="#" id="js-logout">Logout</a></li>
-        `;
-        document.getElementById('js-logout').addEventListener('click', (e) => {
+        addLink('Home', 'index.html');
+        addLink(`Il Mio Ricettario (${user.username})`, 'my_recipes.html');
+        addLink('Modifica utente', 'edit_user.html');
+        addLink('Logout', '#', 'js-logout').addEventListener('click', (e) => {
             e.preventDefault();
             PGRC.logout();
             window.location.href = 'index.html';
         });
     } else {
-        navUl.innerHTML = `
-            <li><a href="index.html">Home</a></li>
-            <li><a href="login.html">Login</a></li>
-            <li><a href="register.html">Register</a></li>
-        `;
+        addLink('Home', 'index.html');
+        addLink('Login', 'login.html');
+        addLink('Register', 'register.html');
     }
 }
 
-async function handleSearchAndRendering() {
+async function handleSearchAndRendering(startupError = null) {
     const urlParams = new URLSearchParams(window.location.search);
     const searchQuery = urlParams.get('search');
+    const requestedSearchType = urlParams.get('type') || 'name';
+    const supportedSearchTypes = ['name', 'ingredient', 'description', 'letter'];
+    const searchType = supportedSearchTypes.includes(requestedSearchType) ? requestedSearchType : 'name';
     const loadMoreContainer = document.getElementById('load-more-container');
 
     if (searchQuery && searchQuery.trim() !== '') {
-        if (loadMoreContainer) loadMoreContainer.style.display = 'none'; // Nascondi se in ricerca
-        const results = await PGRC.searchRecipes(searchQuery, 'name');
-        renderRecipeGrid(results, 'recipe-container');
+        if (loadMoreContainer) loadMoreContainer.classList.add('is-hidden');
+        const typeSelect = document.getElementById('searchType');
+        if (typeSelect) {
+            typeSelect.value = searchType;
+        }
+        if (searchType === 'letter' && !/^[a-z]$/i.test(searchQuery.trim())) {
+            alert("Inserisci una sola lettera da A a Z.");
+            renderRecipeGrid([], 'recipe-container');
+            return;
+        }
+        try {
+            const results = await PGRC.searchRecipes(searchQuery, searchType);
+            renderRecipeGrid(results, 'recipe-container');
+        } catch (error) {
+            renderMessage(document.getElementById('recipe-container'), getErrorMessage(error), 'col-12 text-center alert alert-danger');
+        }
     } else {
-        if (loadMoreContainer) loadMoreContainer.style.display = 'block'; // Mostra nella Home
-        const db = JSON.parse(localStorage.getItem('pgrc_db'));
-        if (db && db.recipes && Object.keys(db.recipes).length > 0) {
-            let recipesArray = Object.values(db.recipes);
+        if (loadMoreContainer) loadMoreContainer.classList.remove('is-hidden');
+        try {
+            let recipesArray = PGRC.getCachedRecipes();
+            if (recipesArray.length > 0) {
             recipesArray = recipesArray.sort(() => 0.5 - Math.random()).slice(0, 6);
             renderRecipeGrid(recipesArray, 'recipe-container');
+            } else if (startupError) {
+                renderMessage(document.getElementById('recipe-container'), getErrorMessage(startupError), 'col-12 text-center alert alert-danger');
+            } else {
+                renderMessage(document.getElementById('recipe-container'), "Nessuna ricetta trovata.");
+            }
+        } catch (error) {
+            renderMessage(document.getElementById('recipe-container'), getErrorMessage(error), 'col-12 text-center alert alert-danger');
         }
     }
 }
@@ -88,17 +182,38 @@ function loadMyRecipesPage() {
 
     if (!user) {
         if (container) {
-            container.innerHTML = '<div class="col-12 text-center" style="padding: 40px;"><h4 class="text-danger">Devi effettuare il login per vedere il tuo ricettario.</h4></div>';
+            renderLoginMessage(container, "Devi effettuare il login per vedere il tuo ricettario.");
         }
         return;
     }
 
-    const savedRecipes = PGRC.getPersonalRecipeBook();
+    let savedRecipes;
+    try {
+        savedRecipes = PGRC.getPersonalRecipeBook();
+    } catch (error) {
+        renderMessage(container, getErrorMessage(error), 'col-12 text-center alert alert-danger');
+        return;
+    }
     if (savedRecipes.length === 0) {
-        container.innerHTML = '<div class="col-12 text-center" style="padding: 40px;"><p>Il tuo ricettario è vuoto! Torna in Home e salva qualche ricetta.</p></div>';
+        renderMessage(container, "Il tuo ricettario è vuoto! Torna in Home e salva qualche ricetta.");
         return;
     }
     renderRecipeGrid(savedRecipes, 'my-recipes-container');
+}
+
+function loadAccountPage() {
+    const user = PGRC.getCurrentUser();
+    const container = document.getElementById('account-management-container');
+
+    if (!user) {
+        renderLoginMessage(container, "Devi effettuare il login per modificare i dati utente.");
+        return;
+    }
+
+    document.getElementById('account-management').classList.remove('is-hidden');
+    document.getElementById('accountUsername').value = user.username;
+    document.getElementById('accountEmail').value = user.email;
+    document.getElementById('accountPreferences').value = (user.preferences || []).join(', ');
 }
 
 // ==========================================
@@ -109,27 +224,14 @@ function renderRecipeGrid(recipes, targetContainerId) {
     const container = document.getElementById(targetContainerId);
     if (!container) return;
 
-    container.innerHTML = '';
-
-    if (!recipes || recipes.length === 0) {
-        container.innerHTML = '<div class="col-12 text-center"><p>Nessuna ricetta trovata.</p></div>';
+    container.replaceChildren();
+    if (!Array.isArray(recipes) || recipes.length === 0) {
+        renderMessage(container, "Nessuna ricetta trovata.");
         return;
     }
 
     recipes.forEach(meal => {
-        const col = document.createElement('div');
-        col.className = 'col-lg-4 col-md-6 col-sm-12';
-        col.innerHTML = `
-            <div class="recipe-item text-center" style="margin-bottom: 30px;">
-                <a href="recipe.html?id=${meal.idMeal}">
-                    <img src="${meal.strMealThumb}" alt="${meal.strMeal}" style="object-fit: cover; width: 100%; height: 250px; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
-                </a>
-                <br />
-                <h3 style="margin-top: 15px;">${meal.strMeal}</h3>
-                <p class="text-muted">${meal.strCategory || ''}</p>
-            </div>
-        `;
-        container.appendChild(col);
+        container.appendChild(createRecipeCard(meal, targetContainerId === 'my-recipes-container'));
     });
 }
 
@@ -137,21 +239,50 @@ function appendRecipesToGrid(recipes, targetContainerId) {
     const container = document.getElementById(targetContainerId);
     if (!container) return;
 
-    recipes.forEach(meal => {
-        const col = document.createElement('div');
-        col.className = 'col-lg-4 col-md-6 col-sm-12';
-        col.innerHTML = `
-            <div class="recipe-item text-center" style="margin-bottom: 30px;">
-                <a href="recipe.html?id=${meal.idMeal}">
-                    <img src="${meal.strMealThumb}" alt="${meal.strMeal}" style="object-fit: cover; width: 100%; height: 250px; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
-                </a>
-                <br />
-                <h3 style="margin-top: 15px; color: #333;">${meal.strMeal}</h3>
-                <p class="text-muted">${meal.strCategory || ''}</p>
-            </div>
-        `;
-        container.appendChild(col);
-    });
+    recipes.forEach(meal => container.appendChild(createRecipeCard(meal, false)));
+}
+
+function createRecipeCard(meal, isPersonalRecipe) {
+    const column = document.createElement('div');
+    column.className = 'col-lg-4 col-md-6 col-sm-12';
+
+    const card = document.createElement('div');
+    card.className = 'recipe-item recipe-card text-center';
+
+    const link = document.createElement('a');
+    link.href = `recipe.html?id=${encodeURIComponent(String(meal.idMeal))}`;
+    const image = document.createElement('img');
+    image.className = 'recipe-card-image';
+    image.alt = meal.strMeal;
+    if (typeof meal.strMealThumb === 'string') {
+        try {
+            const imageUrl = new URL(meal.strMealThumb);
+            if (imageUrl.protocol === 'https:') image.src = imageUrl.href;
+        } catch (error) {
+            console.warn("URL immagine ricetta non valida:", error);
+        }
+    }
+    link.appendChild(image);
+
+    const title = document.createElement('h3');
+    title.className = 'recipe-card-title';
+    title.textContent = meal.strMeal;
+    const category = document.createElement('p');
+    category.className = 'text-muted';
+    category.textContent = typeof meal.strCategory === 'string' ? meal.strCategory : '';
+
+    card.append(link, title, category);
+    if (isPersonalRecipe) {
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'btn btn-danger btn-sm remove-recipe-btn';
+        removeButton.dataset.mealId = String(meal.idMeal);
+        removeButton.textContent = 'Rimuovi dal ricettario';
+        card.appendChild(removeButton);
+    }
+
+    column.appendChild(card);
+    return column;
 }
 
 // ==========================================
@@ -164,105 +295,130 @@ async function initRecipePage() {
     const container = document.getElementById('recipe-details-container');
 
     if (!mealId) {
-        container.innerHTML = '<h2 class="text-center">Ricetta non trovata!</h2>';
+        renderMessage(container, "Ricetta non trovata.", 'col-12 text-center');
         return;
     }
 
-    let meal = null;
-    const db = JSON.parse(localStorage.getItem('pgrc_db'));
-
-    if (db && db.recipes && db.recipes[mealId]) {
-        meal = db.recipes[mealId];
-    } else {
-        try {
-            const res = await fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${mealId}`);
-            const data = await res.json();
-            if (data.meals) meal = data.meals[0];
-
-            if (meal && db) {
-                db.recipes[meal.idMeal] = meal;
-                localStorage.setItem('pgrc_db', JSON.stringify(db));
-            }
-        } catch (e) {
-            console.error("Errore API:", e);
-        }
-    }
-
-    if (!meal) {
-        container.innerHTML = '<h2 class="text-center">Errore nel caricamento della ricetta.</h2>';
+    let meal;
+    try {
+        meal = await PGRC.getRecipeById(mealId);
+    } catch (error) {
+        renderMessage(container, getErrorMessage(error), 'col-12 text-center alert alert-danger');
         return;
     }
 
     renderSingleRecipeHTML(meal);
 
-    if (PGRC.getCurrentUser()) {
-        document.getElementById('interactions-area').style.display = 'block';
+    const user = PGRC.getCurrentUser();
+    document.getElementById('interactions-area').classList.remove('is-hidden');
+    setupRecipeReviews(mealId, user);
+    if (user) {
+        document.getElementById('private-note-area').classList.remove('is-hidden');
         setupRecipeInteractions(mealId);
+    } else {
+        document.getElementById('review-login-prompt').classList.remove('is-hidden');
     }
 }
 
 function renderSingleRecipeHTML(meal) {
-    // 1. Genera Ingredienti
-    let ingredientsHTML = '<div class="content-box ingredients-box">';
+    const container = document.getElementById('recipe-details-container');
+    container.replaceChildren();
+
+    const imageColumn = document.createElement('div');
+    imageColumn.className = 'col-md-4';
+    const image = document.createElement('img');
+    image.className = 'img-responsive recipe-main-img';
+    image.alt = meal.strMeal;
+    if (typeof meal.strMealThumb === 'string') {
+        try {
+            const imageUrl = new URL(meal.strMealThumb);
+            if (imageUrl.protocol === 'https:') image.src = imageUrl.href;
+            else image.classList.add('is-hidden');
+        } catch (error) {
+            image.classList.add('is-hidden');
+            console.warn("URL immagine ricetta non valida:", error);
+        }
+    } else {
+        image.classList.add('is-hidden');
+    }
+
+    const bookButton = document.createElement('button');
+    bookButton.id = 'toggleBookBtn';
+    bookButton.className = 'btn btn-default btn-block recipe-book-btn is-hidden';
+    bookButton.type = 'button';
+    const bookIcon = document.createElement('i');
+    bookIcon.className = 'fa fa-heart-o';
+    bookButton.append(bookIcon, document.createTextNode(' Caricamento...'));
+    imageColumn.append(image, bookButton);
+
+    const detailsColumn = document.createElement('div');
+    detailsColumn.className = 'col-md-8';
+    const title = document.createElement('h2');
+    title.className = 'recipe-main-title';
+    title.textContent = meal.strMeal;
+    detailsColumn.appendChild(title);
+
+    const badges = document.createElement('div');
+    badges.className = 'recipe-badges-container';
+    badges.append(
+        createRecipeBadge('fa fa-cutlery', meal.strCategory || 'Sconosciuta', 'badge-category'),
+        createRecipeBadge('fa fa-globe', meal.strArea || 'Internazionale', 'badge-area')
+    );
+    detailsColumn.appendChild(badges);
+    detailsColumn.appendChild(createRecipeSectionTitle('Ingredienti'));
+
+    const ingredientsBox = document.createElement('div');
+    ingredientsBox.className = 'content-box ingredients-box';
     for (let i = 1; i <= 20; i++) {
         const ing = meal[`strIngredient${i}`];
         const measure = meal[`strMeasure${i}`];
-        if (ing && ing.trim() !== "") {
-            ingredientsHTML += `<div class="ingredient-item">${ing}: <span class="text-muted">${measure}</span></div>`;
+        if (typeof ing === 'string' && ing.trim() !== '') {
+            const ingredientItem = document.createElement('div');
+            ingredientItem.className = 'ingredient-item';
+            const measureLabel = document.createElement('span');
+            measureLabel.className = 'text-muted';
+            measureLabel.textContent = typeof measure === 'string' ? measure : '';
+            ingredientItem.append(document.createTextNode(`${ing}: `), measureLabel);
+            ingredientsBox.appendChild(ingredientItem);
         }
     }
-    ingredientsHTML += '</div>';
 
-    // 2. SANITIZZAZIONE DELLE ISTRUZIONI
-    // Divide per a capo (sia \n che \r\n per sicurezza)
-    let rawSteps = meal.strInstructions.split(/\r?\n/);
-
-    let finalSteps = rawSteps.map(step => {
-        let cleanStep = step.trim();
-        // Regex: Cerca e rimuove "Step 1", "1.", "Step 2:", "2)", ecc. all'inizio della stringa
-        cleanStep = cleanStep.replace(/^(?:step\s*\d+|\d+)\s*[:.\-)]?\s*/i, '');
-        return cleanStep.trim();
-    }).filter(step => step !== ''); // Rimuove le righe rimaste vuote
-
-    // 3. Genera HTML Istruzioni
-    let instructionsHTML = '<div class="content-box">';
+    detailsColumn.appendChild(ingredientsBox);
+    detailsColumn.appendChild(createRecipeSectionTitle('Preparazione'));
+    const instructionsBox = document.createElement('div');
+    instructionsBox.className = 'content-box';
+    const finalSteps = meal.strInstructions.split(/\r?\n/)
+        .map(step => step.trim().replace(/^(?:step\s*\d+|\d+)\s*[:.\-)]?\s*/i, '').trim())
+        .filter(Boolean);
     finalSteps.forEach((step, index) => {
-        instructionsHTML += `
-            <div class="prep-step">
-                <div class="step-label">step ${index + 1}</div>
-                <p>${step}</p>
-            </div>
-        `;
+        const stepElement = document.createElement('div');
+        stepElement.className = 'prep-step';
+        const stepLabel = document.createElement('div');
+        stepLabel.className = 'step-label';
+        stepLabel.textContent = `step ${index + 1}`;
+        const stepText = document.createElement('p');
+        stepText.textContent = step;
+        stepElement.append(stepLabel, stepText);
+        instructionsBox.appendChild(stepElement);
     });
-    instructionsHTML += '</div>';
+    detailsColumn.appendChild(instructionsBox);
+    container.append(imageColumn, detailsColumn);
+}
 
-    // 4. Iniezione nel DOM
-    document.getElementById('recipe-details-container').innerHTML = `
-        <div class="col-md-4">
-            <img src="${meal.strMealThumb}" class="img-responsive recipe-main-img" alt="${meal.strMeal}">
-            <button id="toggleBookBtn" class="btn btn-default btn-block recipe-book-btn" style="display: none;">
-                <i class="fa fa-heart-o"></i> Caricamento...
-            </button>
-        </div>
-        <div class="col-md-8">
-            <h2 class="recipe-main-title">${meal.strMeal}</h2>
+function createRecipeBadge(iconClass, label, badgeClass) {
+    const badge = document.createElement('span');
+    badge.className = `recipe-badge ${badgeClass}`;
+    const icon = document.createElement('i');
+    icon.className = iconClass;
+    badge.append(icon, document.createTextNode(` ${label}`));
+    return badge;
+}
 
-            <div class="recipe-badges-container">
-                <span class="recipe-badge badge-category">
-                    <i class="fa fa-cutlery"></i> ${meal.strCategory || 'Sconosciuta'}
-                </span>
-                <span class="recipe-badge badge-area">
-                    <i class="fa fa-globe"></i> ${meal.strArea || 'Internazionale'}
-                </span>
-            </div>
-
-            <h3 class="recipe-section-title">Ingredienti</h3>
-            ${ingredientsHTML}
-
-            <h3 class="recipe-section-title">Preparazione</h3>
-            ${instructionsHTML}
-        </div>
-    `;
+function createRecipeSectionTitle(label) {
+    const heading = document.createElement('h3');
+    heading.className = 'recipe-section-title';
+    heading.textContent = label;
+    return heading;
 }
 
 function setupRecipeInteractions(mealId) {
@@ -270,15 +426,18 @@ function setupRecipeInteractions(mealId) {
 
     // Bottone Ricettario
     const bookBtn = document.getElementById('toggleBookBtn');
-    bookBtn.style.display = 'block';
+    bookBtn.classList.remove('is-hidden');
 
     const updateBookBtnUI = (isSaved) => {
+        const icon = document.createElement('i');
         if (isSaved) {
-            bookBtn.innerHTML = '<i class="fa fa-heart"></i> Rimuovi dal Ricettario';
+            icon.className = 'fa fa-heart';
             bookBtn.className = 'btn btn-danger btn-block';
+            bookBtn.replaceChildren(icon, document.createTextNode(' Rimuovi dal Ricettario'));
         } else {
-            bookBtn.innerHTML = '<i class="fa fa-heart-o"></i> Aggiungi al Ricettario';
+            icon.className = 'fa fa-heart-o';
             bookBtn.className = 'btn btn-default btn-block';
+            bookBtn.replaceChildren(icon, document.createTextNode(' Aggiungi al Ricettario'));
         }
     };
 
@@ -290,35 +449,96 @@ function setupRecipeInteractions(mealId) {
     // Note Private
     const noteInput = document.getElementById('privateNoteInput');
     noteInput.value = userInteractions.note || "";
-    document.getElementById('saveNoteBtn').addEventListener('click', () => {
-        PGRC.savePrivateNote(mealId, noteInput.value);
-        document.getElementById('noteStatus').style.display = 'inline';
-        setTimeout(() => document.getElementById('noteStatus').style.display = 'none', 2000);
-    });
-
-    // Recensioni
-    const renderReviews = (reviews) => {
-        const list = document.getElementById('reviews-list');
-        if (!reviews || reviews.length === 0) {
-            list.innerHTML = '<p class="text-muted">Nessuna recensione.</p>';
-            return;
-        }
-        list.innerHTML = reviews.map(r => `
-            <div style="border-bottom: 1px solid #eee; margin-bottom: 5px; padding-bottom: 5px;">
-                <small class="text-muted"><i class="fa fa-calendar"></i> ${r.date}</small><br>
-                <span>Difficoltà: ${r.difficulty}/5</span> | <span>Gusto: ${r.taste}/5</span>
-            </div>
-        `).join('');
+    const noteStatus = document.getElementById('noteStatus');
+    const showNoteStatus = message => {
+        noteStatus.textContent = message;
+        noteStatus.classList.remove('is-hidden');
+        setTimeout(() => noteStatus.classList.add('is-hidden'), 2000);
     };
 
-    renderReviews(userInteractions.reviews);
+    document.getElementById('saveNoteBtn').addEventListener('click', () => {
+        PGRC.savePrivateNote(mealId, noteInput.value);
+        showNoteStatus('Salvata!');
+    });
 
-    document.getElementById('addReviewForm').addEventListener('submit', (e) => {
+    document.getElementById('deleteNoteBtn').addEventListener('click', () => {
+        if (!window.confirm("Vuoi eliminare la nota privata per questa ricetta?")) return;
+
+        PGRC.deletePrivateNote(mealId);
+        noteInput.value = '';
+        showNoteStatus('Nota eliminata.');
+    });
+}
+
+function setupRecipeReviews(mealId, user) {
+    const list = document.getElementById('reviews-list');
+    const formArea = document.getElementById('review-form-area');
+    const reviewForm = document.getElementById('addReviewForm');
+    const reviewDate = document.getElementById('reviewDate');
+    const today = new Date();
+    reviewDate.max = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const renderReviews = () => {
+        const reviews = PGRC.getReviews(mealId);
+        list.replaceChildren();
+        if (reviews.length === 0) {
+            list.textContent = 'Nessuna recensione.';
+            return;
+        }
+
+        reviews.forEach(review => {
+            const reviewElement = document.createElement('div');
+            reviewElement.className = 'review-item';
+
+            const authorAndDate = document.createElement('small');
+            authorAndDate.className = 'text-muted';
+            authorAndDate.textContent = `${review.username} · ${review.date}`;
+            reviewElement.appendChild(authorAndDate);
+
+            const ratings = document.createElement('div');
+            ratings.textContent = `Difficoltà: ${review.difficulty}/5 | Gusto: ${review.taste}/5`;
+            reviewElement.appendChild(ratings);
+
+            if (user && review.username === user.username) {
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn btn-link btn-xs';
+                removeButton.textContent = 'Rimuovi la tua recensione';
+                removeButton.addEventListener('click', () => {
+                    try {
+                        if (!PGRC.removeReview(mealId, review.id)) {
+                            alert("Non è stato possibile rimuovere la recensione.");
+                            return;
+                        }
+                        renderReviews();
+                    } catch (error) {
+                        alert(error.message);
+                    }
+                });
+                reviewElement.appendChild(removeButton);
+            }
+
+            list.appendChild(reviewElement);
+        });
+    };
+
+    renderReviews();
+    if (user) formArea.classList.remove('is-hidden');
+
+    reviewForm.addEventListener('submit', (e) => {
         e.preventDefault();
         try {
-            PGRC.addReview(mealId, document.getElementById('diffSelect').value, document.getElementById('tasteSelect').value);
-            renderReviews(PGRC.getUserInteractions(mealId).reviews);
-        } catch(err) { alert(err.message); }
+            PGRC.addReview(
+                mealId,
+                reviewDate.value,
+                document.getElementById('diffSelect').value,
+                document.getElementById('tasteSelect').value
+            );
+            reviewForm.reset();
+            renderReviews();
+        } catch (error) {
+            alert(error.message);
+        }
     });
 }
 
@@ -327,27 +547,100 @@ function setupRecipeInteractions(mealId) {
 // ==========================================
 
 function setupEventListeners() {
+    const myRecipesContainer = document.getElementById('my-recipes-container');
+    if (myRecipesContainer) {
+        myRecipesContainer.addEventListener('click', (e) => {
+            const removeButton = e.target.closest('.remove-recipe-btn');
+            if (!removeButton) return;
+
+            PGRC.toggleRecipeInBook(removeButton.dataset.mealId);
+            loadMyRecipesPage();
+        });
+    }
+
+    const accountForm = document.getElementById('accountForm');
+    if (accountForm) {
+        accountForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('accountUsername').value;
+            const email = document.getElementById('accountEmail').value;
+            const password = document.getElementById('accountPassword').value;
+            const preferences = document.getElementById('accountPreferences').value
+                .split(',')
+                .map(preference => preference.trim())
+                .filter(Boolean);
+
+            try {
+                await PGRC.updateUserData(username, email, password, preferences);
+                document.getElementById('accountPassword').value = '';
+                updateNavbarUI();
+                alert("Dati utente aggiornati.");
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+    }
+
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', () => {
+            if (!window.confirm("Vuoi davvero eliminare il tuo account? Questa operazione non può essere annullata.")) {
+                return;
+            }
+
+            if (PGRC.deleteAccount()) {
+                window.location.href = 'index.html';
+            } else {
+                alert("Impossibile eliminare l'account: nessun utente è autenticato.");
+            }
+        });
+    }
+
     const searchForm = document.getElementById('searchForm');
     if (searchForm) {
+        const searchInput = document.getElementById('searchInput');
+        const searchType = document.getElementById('searchType');
+        const updateSearchInput = () => {
+            const isLetterSearch = searchType.value === 'letter';
+            searchInput.placeholder = isLetterSearch
+                ? 'Inserisci una lettera (A-Z)...'
+                : searchType.value === 'ingredient'
+                    ? 'Es. pollo, pomodoro...'
+                    : searchType.value === 'description'
+                        ? 'Cerca nelle descrizioni caricate...'
+                        : 'Cerca una ricetta...';
+
+            if (isLetterSearch) {
+                searchInput.maxLength = 1;
+                searchInput.pattern = '[A-Za-z]';
+                searchInput.title = 'Inserisci una sola lettera da A a Z.';
+            } else {
+                searchInput.removeAttribute('maxlength');
+                searchInput.removeAttribute('pattern');
+                searchInput.removeAttribute('title');
+            }
+        };
+
+        searchType.addEventListener('change', updateSearchInput);
+        updateSearchInput();
+
         searchForm.addEventListener('submit', (e) => {
-            const input = document.getElementById('searchInput').value;
+            const input = searchInput.value.trim();
             if (!input.trim()) {
                 e.preventDefault();
-            } else {
-                document.getElementById('searchInput').name = "search";
             }
         });
     }
 
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = document.getElementById('loginUser').value;
             const pass = document.getElementById('loginPass').value;
 
             try {
-                PGRC.login(user, pass);
+                await PGRC.login(user, pass);
                 window.location.href = 'my_recipes.html';
             } catch (error) {
                 alert(error.message);
@@ -357,7 +650,7 @@ function setupEventListeners() {
 
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
-        registerForm.addEventListener('submit', (e) => {
+        registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = document.getElementById('regUser').value;
             const email = document.getElementById('regEmail').value;
@@ -365,7 +658,7 @@ function setupEventListeners() {
             const pref = document.getElementById('regPref').value.split(',');
 
             try {
-                PGRC.register(user, email, pass, pref);
+                await PGRC.register(user, email, pass, pref);
                 alert("Registrazione completata! Ora puoi fare il login.");
                 window.location.href = 'login.html';
             } catch (error) {
@@ -378,40 +671,19 @@ function setupEventListeners() {
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) {
         loadMoreBtn.addEventListener('click', async () => {
-            const originalText = loadMoreBtn.innerHTML;
-            loadMoreBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Caricamento...';
+            const originalContent = Array.from(loadMoreBtn.childNodes, node => node.cloneNode(true));
+            const spinner = document.createElement('i');
+            spinner.className = 'fa fa-spinner fa-spin';
+            loadMoreBtn.replaceChildren(spinner, document.createTextNode(' Caricamento...'));
             loadMoreBtn.disabled = true;
 
             try {
-                // Lancia 6 chiamate asincrone alle API per prendere 6 nuove ricette random
-                const promises = [];
-                for(let i = 0; i < 6; i++) {
-                    promises.push(fetch(`https://www.themealdb.com/api/json/v1/1/random.php`).then(res => res.json()));
-                }
-                const results = await Promise.all(promises);
-
-                const newRecipes = [];
-                const db = JSON.parse(localStorage.getItem('pgrc_db')) || { recipes: {} };
-
-                results.forEach(data => {
-                    if (data.meals && data.meals[0]) {
-                        const meal = data.meals[0];
-                        db.recipes[meal.idMeal] = meal; // Salva la nuova ricetta nel DB locale
-                        newRecipes.push(meal); // Aggiunge all'array da renderizzare
-                    }
-                });
-
-                // Aggiorna il Web Storage così le nuove ricette sono persistenti
-                localStorage.setItem('pgrc_db', JSON.stringify(db));
-
-                // Aggiunge le card alla griglia senza cancellare le vecchie
+                const newRecipes = await PGRC.getRandomRecipes(6);
                 appendRecipesToGrid(newRecipes, 'recipe-container');
-
             } catch (error) {
-                console.error("Errore API Load More:", error);
-                alert("Errore di connessione. Riprova più tardi.");
+                alert(getErrorMessage(error));
             } finally {
-                loadMoreBtn.innerHTML = originalText;
+                loadMoreBtn.replaceChildren(...originalContent);
                 loadMoreBtn.disabled = false;
             }
         });

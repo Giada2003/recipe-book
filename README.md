@@ -10,16 +10,19 @@ Recipe data is retrieved from [TheMealDB](https://www.themealdb.com/), while use
 
 ## ✨ Features
 
-* 🔎 Search recipes by name
+* 🔎 Search recipes by name, ingredient, description text, or first letter
 * 🍲 Browse randomly selected recipes
 * 📖 View detailed recipe information
 * ❤️ Save recipes to a personal recipe book
+* 🗑️ Remove recipes from a personal recipe book
 * 📝 Add private notes to recipes
 * ⭐ Rate recipes by:
 
   * Difficulty
   * Taste
+* 🌍 View public reviews, choose their date, and remove your own reviews
 * 👤 Register and log in to a local account
+* ✏️ Update account details and delete an account
 * 🚪 Login/logout management
 * 💾 Persistent browser storage using `localStorage`
 * 📱 Responsive interface
@@ -59,6 +62,7 @@ The application is entirely client-side and is built around three main component
 Contains the application's core logic:
 
 * User registration and authentication
+* Account detail updates and deletion
 * Recipe retrieval and search
 * Local recipe storage
 * Personal recipe books
@@ -77,10 +81,6 @@ Connects the core logic with the HTML interface and handles:
 * Recipe-book interactions
 * Notes and reviews
 
-**`scripts.js`**
-
-Contains supporting UI behavior.
-
 ---
 
 ## 📁 Project Structure
@@ -93,17 +93,16 @@ recipe-book/
 ├── register.html           # Registration page
 ├── recipe.html             # Recipe details
 ├── my_recipes.html         # Personal recipe book
+├── edit_user.html          # Account details and account deletion
 │
 ├── css/
-│   ├── reset.css
 │   ├── bootstrap.min.css
 │   ├── font-awesome.min.css
 │   └── styles.css
 │
 ├── js/
 │   ├── pgrc-core.js        # Core application logic
-│   ├── ui-controller.js    # UI and page controller
-│   └── scripts.js          # Supporting scripts
+│   └── ui-controller.js    # UI and page controller
 │
 ├── images/                 # Images and visual assets
 └── fonts/                  # Font assets
@@ -118,10 +117,8 @@ recipe-book/
 | HTML5          | Application structure     |
 | CSS3           | Custom styling            |
 | JavaScript     | Application logic         |
-| jQuery         | DOM and UI utilities      |
 | Bootstrap      | Responsive layout         |
 | Font Awesome   | Icons                     |
-| Modernizr      | Browser feature detection |
 | TheMealDB API  | Recipe data               |
 | `localStorage` | Local persistence         |
 
@@ -160,7 +157,7 @@ http://localhost:8000
 
 ### Search for a recipe
 
-Use the search bar on the homepage to search TheMealDB by recipe name.
+Use the search bar on the homepage to search TheMealDB by recipe name, ingredient, or first letter. Description-text searches match recipes already cached in the browser.
 
 ### View a recipe
 
@@ -182,10 +179,11 @@ Use the **Register** page to create a local account.
 While logged in, select **Add to Recipe Book** on a recipe.
 
 Saved recipes are available from **My Recipe Book**.
+Select **Remove from Recipe Book** on a saved recipe to remove it.
 
 ### Add a note
 
-Recipe pages allow authenticated users to attach a private note to a recipe.
+Recipe pages allow authenticated users to add, edit, and delete a private note attached to a recipe. The recipe data from TheMealDB is read-only; this note is the user-editable part of a saved recipe, while the recipe book supports adding and removing recipes.
 
 ### Rate a recipe
 
@@ -193,6 +191,12 @@ Users can rate recipes on two five-point scales:
 
 * **Difficulty**
 * **Taste**
+
+Reviews are visible to all visitors. Logged-in users enter the dish preparation date (today or earlier) and can remove reviews they authored.
+
+### Manage an account
+
+From **Edit User**, users can update their username, email, and favorite dishes, optionally change their password, or delete their account.
 
 ---
 
@@ -213,10 +217,14 @@ pgrc_db
 ├── users
 ├── recipes
 ├── interactions
+├── reviews
+├── loadedRecipeLetters
 └── currentUser
 ```
 
 This allows recipe data, user accounts, saved recipes, notes, and reviews to persist between browser sessions.
+
+Passwords are stored as PBKDF2-SHA256 hashes with a unique random salt and 600,000 iterations. Existing plaintext passwords are hashed at startup. Since this is a client-side application, this does not replace server-side authentication or protect data from someone who can modify the browser storage.
 
 ---
 
@@ -270,3 +278,4 @@ View Recipe
 | `register.html`   | Account registration            |
 | `recipe.html`     | Recipe details and interactions |
 | `my_recipes.html` | Personal recipe book            |
+| `edit_user.html`  | Account details and deletion    |

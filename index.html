@@ -26,7 +26,7 @@
       <!-- LOGO -->
       <div class="navbar-header">
         <a class="navbar-brand" href="index.html">
-          <img src="images/logo.png" alt="Logo" style="height: 40px; width: auto;">
+          <img src="images/logo.png" alt="Logo" class="logo-img">
         </a>
       </div>
 
@@ -44,9 +44,14 @@
 
         <!-- Abbiamo sostituito lo stile inline con la classe search-flex -->
         <div class="search-flex">
-          <input type="text" id="searchInput" placeholder="Cerca la tua ricetta preferita..." style="flex-grow: 1; border: none; outline: none;">
-          <input type="hidden" id="searchType" value="name">
-          <button type="submit" class="btn btn-default" style="border: none; outline: none;">
+          <select id="searchType" name="type" aria-label="Tipo di ricerca">
+            <option value="name">Nome ricetta</option>
+            <option value="ingredient">Ingrediente</option>
+            <option value="description">Testo descrittivo</option>
+            <option value="letter">Lettera iniziale</option>
+          </select>
+          <input type="text" id="searchInput" name="search" placeholder="Cerca una ricetta..." required>
+          <button type="submit" class="btn btn-default search-submit-btn">
             <i class="fa fa-search"></i>
           </button>
         </div>
@@ -57,21 +62,21 @@
 
   <!-- Griglia Ricette Pubbliche -->
   <div class="container">
-    <div class="text-center" style="margin-top: 50px;">
+    <div class="text-center homepage-title">
       <h2 class="section-title">Esplora le Ricette</h2>
     </div>
 
     <div class="row" id="recipe-container">
-        <div class="col-12 text-center" style="padding: 40px;">
-            <i class="fa fa-spinner fa-spin fa-3x" style="color: #3baf36;"></i>
-            <p style="margin-top: 15px; font-size: 18px; color: #666;">Caricamento ricette...</p>
+        <div class="col-12 text-center home-loading-state">
+            <i class="fa fa-spinner fa-spin fa-3x loading-spinner"></i>
+            <p class="loading-message">Caricamento ricette...</p>
         </div>
     </div>
 
-    <div class="row" id="load-more-container" style="display: none; margin-top: 20px; margin-bottom: 50px;">
+    <div class="row load-more-container is-hidden" id="load-more-container">
         <div class="col-12 text-center">
-            <button id="loadMoreBtn" class="btn" style="background-color: #3baf36; color: white; border: none; padding: 12px 30px; font-size: 18px; border-radius: 25px; font-weight: bold; transition: all 0.3s;">
-                Carica altre ricette <i class="fa fa-refresh" style="margin-left: 5px;"></i>
+            <button id="loadMoreBtn" class="btn load-more-btn">
+                Carica altre ricette <i class="fa fa-refresh load-more-icon"></i>
             </button>
         </div>
     </div>
