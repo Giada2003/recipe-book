@@ -18,7 +18,7 @@ body {
 
 .navbar-custom {
   margin-bottom: 0;
-  background: #3baf36;
+  background: #28a745;
   border: 0;
   border-radius: 0;
 }
@@ -39,20 +39,15 @@ body {
   height: 40px;
 }
 
-.navbar-default {
-  background: #28a745;
-  border: 0;
-}
-
-.navbar-default .navbar-nav {
+.navbar-custom .navbar-nav {
   flex-direction: row;
 }
 
-.navbar-default .navbar-nav > li {
+.navbar-custom .navbar-nav > li {
   margin: 0 15px;
 }
 
-.navbar-default .navbar-nav > li > a {
+.navbar-custom .navbar-nav > li > a {
   color: #fff;
 }
 
@@ -541,4 +536,116 @@ body {
 
 .banner-overlay {
   display: none !important;
+}
+
+/* ==========================================================================
+   Responsive layout
+   ========================================================================== */
+
+@media (max-width: 767.98px) {
+  .navbar-custom .container-fluid {
+    flex-direction: column;
+    padding: 5px 15px;
+  }
+
+  #main-navbar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  #main-navbar li {
+    margin: 0 4px;
+  }
+
+  #main-navbar li a {
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  #hero-banner {
+    padding: 32px 0;
+  }
+
+  .section-title {
+    margin-bottom: 28px;
+    font-size: 26px;
+    letter-spacing: 1px;
+  }
+
+  .recipe-main-title {
+    margin-top: 24px;
+    font-size: 34px;
+  }
+
+  .interaction-layout {
+    gap: 16px;
+  }
+
+  .interaction-column {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .search-container {
+    max-width: calc(100% - 24px);
+    border-radius: 20px;
+  }
+
+  .search-container .search-flex {
+    flex-wrap: wrap;
+  }
+
+  .search-container select {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .search-container input {
+    padding: 12px 14px !important;
+    font-size: 16px !important;
+  }
+
+  .search-container button {
+    padding: 12px 18px !important;
+  }
+
+  .recipe-item img.recipe-card-image {
+    height: 220px;
+  }
+
+  .recipe-main-title {
+    font-size: 29px;
+  }
+
+  .recipe-section-title {
+    font-size: 24px;
+  }
+
+  .recipe-badge {
+    margin-bottom: 8px;
+    padding: 6px 12px;
+  }
+
+  .review-rating-row {
+    flex-direction: column;
+  }
+
+  .review-rating-field {
+    width: 100%;
+  }
+
+  .auth-page-login {
+    margin-top: 40px;
+  }
+
+  .auth-page-register {
+    margin-top: 30px;
+  }
+
+  .recipe-interactions {
+    margin-top: 30px;
+  }
 }
