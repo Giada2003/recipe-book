@@ -20,18 +20,16 @@
 <body>
 
   <!-- Header / Navigation Centrata -->
-  <nav class="navbar navbar-default navbar-custom">
+  <nav class="navbar navbar-expand-md navbar-dark navbar-custom">
     <div class="container-fluid">
 
       <!-- LOGO -->
-      <div class="navbar-header">
-        <a class="navbar-brand" href="index.html">
-          <img src="images/logo.png" alt="Logo" class="logo-img">
-        </a>
-      </div>
+      <a class="navbar-brand" href="index.html">
+        <img src="images/logo.png" alt="Logo" class="logo-img">
+      </a>
 
       <!-- MENU (Si popola con JS) -->
-      <ul class="nav navbar-nav" id="main-navbar"></ul>
+      <ul class="navbar-nav" id="main-navbar"></ul>
 
     </div>
   </nav>
@@ -51,7 +49,7 @@
             <option value="letter">Lettera iniziale</option>
           </select>
           <input type="text" id="searchInput" name="search" placeholder="Cerca una ricetta..." required>
-          <button type="submit" class="btn btn-default search-submit-btn">
+          <button type="submit" class="btn btn-secondary search-submit-btn">
             <i class="fa fa-search"></i>
           </button>
         </div>

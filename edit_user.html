@@ -10,21 +10,19 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <nav class="navbar navbar-default navbar-custom">
+  <nav class="navbar navbar-expand-md navbar-dark navbar-custom">
     <div class="container-fluid">
-      <div class="navbar-header">
-        <a class="navbar-brand" href="index.html">
-          <img src="images/logo.png" alt="Logo" class="logo-img">
-        </a>
-      </div>
-      <ul class="nav navbar-nav" id="main-navbar"></ul>
+      <a class="navbar-brand" href="index.html">
+        <img src="images/logo.png" alt="Logo" class="logo-img">
+      </a>
+      <ul class="navbar-nav" id="main-navbar"></ul>
     </div>
   </nav>
 
   <main class="container" id="account-management-container">
     <h2 class="text-center page-title">Modifica utente</h2>
-    <div id="account-management" class="panel panel-default is-hidden">
-      <div class="panel-body">
+    <div id="account-management" class="card panel-custom is-hidden">
+      <div class="card-body">
         <form id="accountForm">
           <div class="form-group">
             <label for="accountUsername">Username</label>
@@ -46,7 +44,7 @@
         </form>
         <hr>
         <button type="button" id="deleteAccountBtn" class="btn btn-danger">Elimina account</button>
-        <a href="my_recipes.html" class="btn btn-default">Torna al ricettario</a>
+        <a href="my_recipes.html" class="btn btn-secondary">Torna al ricettario</a>
       </div>
     </div>
   </main>

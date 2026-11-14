@@ -11,7 +11,7 @@ Recipe data is retrieved from [TheMealDB](https://www.themealdb.com/), while use
 ## ✨ Features
 
 * 🔎 Search recipes by name, ingredient, description text, or first letter
-* 🍲 Browse randomly selected recipes
+* 🍲 Browse the cached recipe catalog with pagination
 * 📖 View detailed recipe information
 * ❤️ Save recipes to a personal recipe book
 * 🗑️ Remove recipes from a personal recipe book
@@ -117,7 +117,7 @@ recipe-book/
 | HTML5          | Application structure     |
 | CSS3           | Custom styling            |
 | JavaScript     | Application logic         |
-| Bootstrap      | Responsive layout         |
+| Bootstrap 4    | Responsive layout         |
 | Font Awesome   | Icons                     |
 | TheMealDB API  | Recipe data               |
 | `localStorage` | Local persistence         |
@@ -130,7 +130,8 @@ recipe-book/
 
 * A modern web browser
 * Internet connection for recipe API requests
-* Python 3, or another local HTTP server
+* A local HTTP server (Python 3 is sufficient)
+* Web Crypto support for registration and login
 
 ### Clone the repository
 
@@ -139,16 +140,30 @@ git clone https://github.com/Giada2003/recipe-book.git
 cd recipe-book
 ```
 
-### Start a local server
+### Run the application
+
+Run the server from the project root (the directory containing `index.html`):
 
 ```bash
-python3 -m http.server 8000
+python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Then open:
+Then visit the homepage:
 
 ```text
-http://localhost:8000
+http://localhost:8000/index.html
+```
+
+Do not open `index.html` directly with a `file://` URL. Registration and login
+use `crypto.subtle` to hash passwords, and browsers expose this API only in a
+secure context such as `localhost` or HTTPS. If the browser reports that Web
+Crypto is unavailable, check that the application is being served from
+`localhost` or HTTPS and use a current browser.
+
+On Windows, the server can also be started with:
+
+```powershell
+py -m http.server 8000 --bind 127.0.0.1
 ```
 
 ---
@@ -157,7 +172,7 @@ http://localhost:8000
 
 ### Search for a recipe
 
-Use the search bar on the homepage to search TheMealDB by recipe name, ingredient, or first letter. Description-text searches match recipes already cached in the browser.
+Use the search bar on the homepage to search TheMealDB by recipe name, ingredient, or first letter. Enter ingredient names in English (for example, `chicken` or `tomato`). Description-text searches match recipes already cached in the browser. Without a search term, browse the cached catalog six recipes at a time.
 
 ### View a recipe
 
@@ -235,13 +250,15 @@ PGRC uses [TheMealDB](https://www.themealdb.com/) to retrieve recipe information
 Main endpoints include:
 
 ```text
-/random.php
 /search.php?s=<query>
 /filter.php?i=<ingredient>
+/search.php?f=<letter>
 /lookup.php?i=<meal_id>
 ```
 
-Recipe results are also cached locally to reduce repeated requests.
+The catalog is populated from the alphabetic search endpoint, cached locally,
+and paginated on the homepage. Ingredient search results are enriched with
+complete recipe details when those details are already in the cache.
 
 ---
 

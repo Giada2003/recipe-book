@@ -3,6 +3,10 @@
  * UI Controller - Gestione DOM, Eventi e Rendering
  */
 
+const HOME_RECIPES_PAGE_SIZE = 6;
+let homeRecipeCatalog = [];
+let homeRecipeOffset = 0;
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Il core deve validare lo storage e preparare il catalogo prima che la UI
     // legga i dati dell'utente o mostri le ricette disponibili.
@@ -131,7 +135,9 @@ function updateNavbarUI() {
     // I link sono creati come nodi DOM e il testo non viene interpretato come HTML.
     const addLink = (text, href, id) => {
         const item = document.createElement('li');
+        item.className = 'nav-item';
         const link = document.createElement('a');
+        link.className = 'nav-link';
         link.href = href;
         link.textContent = text;
         if (id) link.id = id;
@@ -159,7 +165,7 @@ function updateNavbarUI() {
 
 /**
  * Decide quale flusso di visualizzazione usare sulla home:
- * una ricerca richiesta dall'URL oppure alcune ricette casuali dalla cache.
+ * una ricerca richiesta dall'URL oppure una pagina del catalogo in cache.
  */
 async function handleSearchAndRendering(startupError = null) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -170,8 +176,10 @@ async function handleSearchAndRendering(startupError = null) {
     const loadMoreContainer = document.getElementById('load-more-container');
 
     if (searchQuery && searchQuery.trim() !== '') {
-        // "Carica altre" riguarda il catalogo casuale, non i risultati filtrati.
+        // La paginazione del catalogo non deve aggiungere ricette ai risultati filtrati.
         if (loadMoreContainer) loadMoreContainer.classList.add('is-hidden');
+        homeRecipeCatalog = [];
+        homeRecipeOffset = 0;
         const typeSelect = document.getElementById('searchType');
         if (typeSelect) {
             typeSelect.value = searchType;
@@ -189,22 +197,31 @@ async function handleSearchAndRendering(startupError = null) {
             renderMessage(document.getElementById('recipe-container'), getErrorMessage(error), 'col-12 text-center alert alert-danger');
         }
     } else {
-        if (loadMoreContainer) loadMoreContainer.classList.remove('is-hidden');
         try {
-            let recipesArray = PGRC.getCachedRecipes();
-            if (recipesArray.length > 0) {
-            // La home mostra un campione casuale; il resto resta disponibile
-            // tramite il pulsante di caricamento aggiuntivo.
-            recipesArray = recipesArray.sort(() => 0.5 - Math.random()).slice(0, 6);
-            renderRecipeGrid(recipesArray, 'recipe-container');
+            // Un ordine stabile permette di sfogliare il catalogo senza
+            // ripetizioni o salti causati da selezioni casuali.
+            homeRecipeCatalog = PGRC.getCachedRecipes().sort((first, second) =>
+                first.strMeal.localeCompare(second.strMeal, 'en', { sensitivity: 'base' })
+            );
+            homeRecipeOffset = 0;
+            if (homeRecipeCatalog.length > 0) {
+                const firstPage = homeRecipeCatalog.slice(0, HOME_RECIPES_PAGE_SIZE);
+                homeRecipeOffset = firstPage.length;
+                renderRecipeGrid(firstPage, 'recipe-container');
+                if (loadMoreContainer) {
+                    loadMoreContainer.classList.toggle('is-hidden', homeRecipeOffset >= homeRecipeCatalog.length);
+                }
             } else if (startupError) {
+                if (loadMoreContainer) loadMoreContainer.classList.add('is-hidden');
                 // Mostra l'errore solo se l'avvio non ha lasciato ricette in cache.
                 renderMessage(document.getElementById('recipe-container'), getErrorMessage(startupError), 'col-12 text-center alert alert-danger');
             } else {
+                if (loadMoreContainer) loadMoreContainer.classList.add('is-hidden');
                 // L'assenza di risultati è distinta da un errore API o di rete.
                 renderMessage(document.getElementById('recipe-container'), "Nessuna ricetta trovata.");
             }
         } catch (error) {
+            if (loadMoreContainer) loadMoreContainer.classList.add('is-hidden');
             renderMessage(document.getElementById('recipe-container'), getErrorMessage(error), 'col-12 text-center alert alert-danger');
         }
     }
@@ -398,7 +415,7 @@ function renderSingleRecipeHTML(meal) {
     const imageColumn = document.createElement('div');
     imageColumn.className = 'col-md-4';
     const image = document.createElement('img');
-    image.className = 'img-responsive recipe-main-img';
+    image.className = 'img-fluid recipe-main-img';
     image.alt = meal.strMeal;
     if (typeof meal.strMealThumb === 'string') {
         try {
@@ -416,7 +433,7 @@ function renderSingleRecipeHTML(meal) {
 
     const bookButton = document.createElement('button');
     bookButton.id = 'toggleBookBtn';
-    bookButton.className = 'btn btn-default btn-block recipe-book-btn is-hidden';
+    bookButton.className = 'btn btn-secondary btn-block recipe-book-btn is-hidden';
     bookButton.type = 'button';
     const bookIcon = document.createElement('i');
     bookIcon.className = 'fa fa-heart-o';
@@ -521,7 +538,7 @@ function setupRecipeInteractions(mealId) {
             bookBtn.replaceChildren(icon, document.createTextNode(' Rimuovi dal Ricettario'));
         } else {
             icon.className = 'fa fa-heart-o';
-            bookBtn.className = 'btn btn-default btn-block';
+            bookBtn.className = 'btn btn-secondary btn-block';
             bookBtn.replaceChildren(icon, document.createTextNode(' Aggiungi al Ricettario'));
         }
     };
@@ -796,10 +813,16 @@ function setupEventListeners() {
             loadMoreBtn.disabled = true;
 
             try {
-                // Il core recupera e persiste le ricette, mentre qui si aggiorna
-                // soltanto la griglia già visibile.
-                const newRecipes = await PGRC.getRandomRecipes(6);
-                appendRecipesToGrid(newRecipes, 'recipe-container');
+                // Consuma la pagina successiva del catalogo già in cache.
+                const nextRecipes = homeRecipeCatalog.slice(
+                    homeRecipeOffset,
+                    homeRecipeOffset + HOME_RECIPES_PAGE_SIZE
+                );
+                appendRecipesToGrid(nextRecipes, 'recipe-container');
+                homeRecipeOffset += nextRecipes.length;
+                if (homeRecipeOffset >= homeRecipeCatalog.length) {
+                    document.getElementById('load-more-container').classList.add('is-hidden');
+                }
             } catch (error) {
                 alert(getErrorMessage(error));
             } finally {

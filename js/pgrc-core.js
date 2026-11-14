@@ -192,18 +192,38 @@ class PGRCSystem {
     }
 
     /**
+     * Verifica che il browser esponga tutte le primitive crittografiche usate
+     * dall'autenticazione e segnala come abilitarle quando la pagina è aperta
+     * da un contesto non sicuro (ad esempio file:// invece di localhost/HTTPS).
+     */
+    _assertCryptoSupport() {
+        const webCrypto = globalThis.crypto;
+        if (!webCrypto || !webCrypto.subtle ||
+            typeof webCrypto.subtle.importKey !== 'function' ||
+            typeof webCrypto.subtle.deriveBits !== 'function' ||
+            typeof webCrypto.getRandomValues !== 'function' ||
+            typeof TextEncoder !== 'function') {
+            throw new Error(
+                "Questo browser non supporta Web Crypto (crypto.subtle), necessaria per proteggere le password. " +
+                "Apri il progetto tramite localhost o HTTPS e usa un browser aggiornato."
+            );
+        }
+    }
+
+    /**
      * Applica PBKDF2-SHA256 alla password con il sale e il numero di iterazioni
      * forniti; Web Crypto esegue il calcolo senza bloccare il thread UI.
      */
     async _derivePasswordHash(password, salt, iterations) {
-        const key = await crypto.subtle.importKey(
+        this._assertCryptoSupport();
+        const key = await globalThis.crypto.subtle.importKey(
             'raw',
             new TextEncoder().encode(password),
             'PBKDF2',
             false,
             ['deriveBits']
         );
-        return crypto.subtle.deriveBits(
+        return globalThis.crypto.subtle.deriveBits(
             { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
             key,
             256
@@ -217,7 +237,8 @@ class PGRCSystem {
     async _hashPassword(password) {
         if (typeof password !== 'string') throw new Error("La password non è valida.");
 
-        const salt = crypto.getRandomValues(new Uint8Array(16));
+        this._assertCryptoSupport();
+        const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
         const hash = await this._derivePasswordHash(password, salt, this.passwordIterations);
         return {
             algorithm: 'PBKDF2-SHA256',
@@ -355,6 +376,7 @@ class PGRCSystem {
      * solo dopo una verifica PBKDF2 riuscita.
      */
     async login(username, password) {
+        this._assertCryptoSupport();
         const db = this._getDB();
         const user = db.users[username];
 
@@ -580,33 +602,6 @@ class PGRCSystem {
         db.recipes[meal.idMeal] = meal;
         this._saveDB(db);
         return meal;
-    }
-
-    /**
-     * Richiede più ricette casuali in parallelo, le valida e le salva insieme.
-     * Una risposta valida vuota viene ignorata se le altre richieste hanno prodotto
-     * ricette; se tutte sono vuote, il metodo segnala una risposta API non utile.
-     */
-    async getRandomRecipes(count) {
-        if (!Number.isInteger(count) || count < 1) {
-            throw this._createError('INVALID_INPUT', "Il numero di ricette richiesto non è valido.");
-        }
-
-        const responses = await Promise.all(Array.from({ length: count }, () =>
-            this._fetchJson(`${this.apiUrl}/random.php`)
-        ));
-        // Ogni risposta random contiene al massimo un elemento da aggiungere.
-        const meals = responses.flatMap(response => this._readMeals(response).slice(0, 1));
-        if (meals.length === 0) {
-            throw this._createError('API_RESPONSE', "Errore nella risposta API: non sono state restituite ricette.");
-        }
-
-        const db = this._getDB();
-        meals.forEach(meal => {
-            db.recipes[meal.idMeal] = meal;
-        });
-        this._saveDB(db);
-        return meals;
     }
 
     // ==========================================

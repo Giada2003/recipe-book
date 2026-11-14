@@ -12,14 +12,12 @@
 <body>
 
 <!-- Navbar -->
-<nav class="navbar navbar-default navbar-custom">
+<nav class="navbar navbar-expand-md navbar-dark navbar-custom">
     <div class="container-fluid">
-        <div class="navbar-header">
-            <a class="navbar-brand" href="index.html">
-                <img src="images/logo.png" alt="Logo" class="logo-img">
-            </a>
-        </div>
-        <ul class="nav navbar-nav" id="main-navbar"></ul>
+        <a class="navbar-brand" href="index.html">
+            <img src="images/logo.png" alt="Logo" class="logo-img">
+        </a>
+        <ul class="navbar-nav" id="main-navbar"></ul>
     </div>
 </nav>
 
@@ -40,14 +38,14 @@
 
             <!-- Colonna Note Privata -->
             <div id="private-note-area" class="interaction-column private-note-area is-hidden">
-                <div class="panel panel-custom interaction-panel private-note-panel">
-                    <div class="panel-heading note-panel-heading">
-                        <h3 class="panel-title interaction-panel-title">
+                <div class="card panel-custom interaction-panel private-note-panel">
+                    <div class="card-header note-panel-heading">
+                        <h3 class="card-title interaction-panel-title">
                             <i class="fa fa-lock"></i> La tua Nota Privata
                         </h3>
                     </div>
                     <!-- Aggiunta classe interaction-panel-body per il padding -->
-                    <div class="panel-body interaction-panel-body note-panel-body">
+                    <div class="card-body interaction-panel-body note-panel-body">
                         <div>
                             <textarea id="privateNoteInput" class="form-control private-note-input" rows="4" placeholder="Scrivi qui i tuoi appunti segreti sulla ricetta..."></textarea>
                         </div>
@@ -64,14 +62,14 @@
 
             <!-- Colonna Recensioni -->
             <div class="interaction-column">
-                <div class="panel panel-custom interaction-panel review-panel">
-                    <div class="panel-heading review-panel-heading">
-                        <h3 class="panel-title interaction-panel-title">
+                <div class="card panel-custom interaction-panel review-panel">
+                    <div class="card-header review-panel-heading">
+                        <h3 class="card-title interaction-panel-title">
                             <i class="fa fa-star review-star"></i> Recensioni
                         </h3>
                     </div>
                     <!-- Aggiunta classe interaction-panel-body per il padding -->
-                    <div class="panel-body interaction-panel-body reviews-panel-body">
+                    <div class="card-body interaction-panel-body reviews-panel-body">
                         <div id="reviews-list" class="reviews-list"></div>
 
                         <div id="review-form-area" class="is-hidden">
